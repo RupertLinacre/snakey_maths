@@ -14,7 +14,19 @@ import { YEAR_LEVELS, PROBLEM_TYPES } from './math';
 import { initState, reduce } from './core';
 import type { Dir, GameEvent, State } from './types';
 
-export function init(): void {
+const SPRITE_BASE_SIZE = 48;
+
+function loadSprite(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
+    img.src = src;
+  });
+}
+
+export async function init(): Promise<void> {
   const ac = new AbortController();
   const { signal } = ac;
 
@@ -35,6 +47,11 @@ export function init(): void {
   if (!ctx) {
     throw new Error('Cannot initialise game: 2D context unavailable');
   }
+
+  const [headSprite, bodySprite] = await Promise.all([
+    loadSprite('/sprites/snake_head.png'),
+    loadSprite('/sprites/snake_body.png'),
+  ]);
 
   const logicalWidth = CANVAS_WIDTH;
   const logicalHeight = CANVAS_HEIGHT;
@@ -112,10 +129,21 @@ export function init(): void {
   const hudHeight = HUD_HEIGHT;
   const gridOffsetY = hudHeight;
 
+  const spriteScale = CELL / SPRITE_BASE_SIZE;
+
   const prepareContext = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
+  };
+
+  const drawSprite = (image: HTMLImageElement, centerX: number, centerY: number, rotation: number) => {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    ctx.scale(spriteScale, spriteScale);
+    ctx.drawImage(image, -image.width / 2, -image.height / 2);
+    ctx.restore();
   };
 
   const drawBackground = () => {
@@ -159,21 +187,62 @@ export function init(): void {
       return;
     }
 
-    const head = state.snake[0];
-    const body = state.snake.slice(1);
-    const padding = 2;
+    const segments = state.snake;
+    const getCenter = (point: { x: number; y: number }) => ({
+      x: point.x * CELL + CELL / 2,
+      y: gridOffsetY + point.y * CELL + CELL / 2,
+    });
 
-    ctx.fillStyle = '#2ecc71';
-    for (const segment of body) {
-      const x = segment.x * CELL + padding;
-      const y = gridOffsetY + segment.y * CELL + padding;
-      ctx.fillRect(x, y, CELL - padding * 2, CELL - padding * 2);
+    const fallbackDraw = (point: { x: number; y: number }) => {
+      const padding = 3;
+      ctx.fillStyle = '#38ef7d';
+      ctx.fillRect(
+        point.x * CELL + padding,
+        gridOffsetY + point.y * CELL + padding,
+        CELL - padding * 2,
+        CELL - padding * 2,
+      );
+    };
+
+    for (let i = 1; i < segments.length; i += 1) {
+      const segment = segments[i];
+      const prev = segments[i - 1];
+      const next = segments[i + 1] ?? prev;
+
+      const vertical = prev.x === segment.x && next.x === segment.x;
+      const horizontal = prev.y === segment.y && next.y === segment.y;
+
+      const center = getCenter(segment);
+
+      if (vertical) {
+        const rotation = prev.y < segment.y ? 0 : Math.PI;
+        drawSprite(bodySprite, center.x, center.y, rotation);
+      } else if (horizontal) {
+        const rotation = prev.x < segment.x ? Math.PI / 2 : -Math.PI / 2;
+        drawSprite(bodySprite, center.x, center.y, rotation);
+      } else {
+        fallbackDraw(segment);
+      }
     }
 
-    const headX = head.x * CELL + padding;
-    const headY = gridOffsetY + head.y * CELL + padding;
-    ctx.fillStyle = '#48ff9b';
-    ctx.fillRect(headX, headY, CELL - padding * 2, CELL - padding * 2);
+    const head = segments[0];
+    const headCenter = getCenter(head);
+    const facing = state.dirQueue[0] ?? state.dir;
+    const headRotation = (() => {
+      switch (facing) {
+        case 'up':
+          return Math.PI;
+        case 'left':
+          return -Math.PI / 2;
+        case 'right':
+          return Math.PI / 2;
+        case 'down':
+        default:
+          return 0;
+      }
+    })();
+
+    drawSprite(headSprite, headCenter.x, headCenter.y, headRotation);
   };
 
   const drawFruits = () => {

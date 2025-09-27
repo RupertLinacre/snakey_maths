@@ -2,4 +2,6 @@ import './style.css';
 
 import { init } from './view';
 
-init();
+init().catch((error) => {
+  console.error('Failed to initialise snake-maths', error);
+});
