@@ -48,9 +48,10 @@ export async function init(): Promise<void> {
     throw new Error('Cannot initialise game: 2D context unavailable');
   }
 
-  const [headSprite, bodySprite] = await Promise.all([
+  const [headSprite, bodySprite, cornerSprite] = await Promise.all([
     loadSprite('/sprites/snake_head.png'),
     loadSprite('/sprites/snake_body.png'),
+    loadSprite('/sprites/snake_corner.png'),
   ]);
 
   const logicalWidth = CANVAS_WIDTH;
@@ -209,17 +210,70 @@ export async function init(): Promise<void> {
       const prev = segments[i - 1];
       const next = segments[i + 1] ?? prev;
 
-      const vertical = prev.x === segment.x && next.x === segment.x;
-      const horizontal = prev.y === segment.y && next.y === segment.y;
+      const dxPrev = prev.x - segment.x;
+      const dyPrev = prev.y - segment.y;
+      const dxNext = next.x - segment.x;
+      const dyNext = next.y - segment.y;
 
       const center = getCenter(segment);
 
-      if (vertical) {
-        const rotation = prev.y < segment.y ? 0 : Math.PI;
+      const isStraightVertical = dxPrev === 0 && dxNext === 0;
+      const isStraightHorizontal = dyPrev === 0 && dyNext === 0;
+
+      if (isStraightVertical) {
+        const rotation = dyPrev < 0 ? 0 : Math.PI;
         drawSprite(bodySprite, center.x, center.y, rotation);
-      } else if (horizontal) {
-        const rotation = prev.x < segment.x ? Math.PI / 2 : -Math.PI / 2;
+        continue;
+      }
+
+      if (isStraightHorizontal) {
+        const rotation = dxPrev < 0 ? Math.PI / 2 : -Math.PI / 2;
         drawSprite(bodySprite, center.x, center.y, rotation);
+        continue;
+      }
+
+      const cornerRotation = (() => {
+        if (dxPrev === 0 && dyPrev === 1) {
+          if (dxNext === 1 && dyNext === 0) {
+            return 0;
+          }
+          if (dxNext === -1 && dyNext === 0) {
+            return Math.PI / 2;
+          }
+        }
+
+        if (dxPrev === 0 && dyPrev === -1) {
+          if (dxNext === 1 && dyNext === 0) {
+            return (3 * Math.PI) / 2;
+          }
+          if (dxNext === -1 && dyNext === 0) {
+            return Math.PI;
+          }
+        }
+
+        if (dxPrev === 1 && dyPrev === 0) {
+          if (dxNext === 0 && dyNext === -1) {
+            return Math.PI;
+          }
+          if (dxNext === 0 && dyNext === 1) {
+            return (3 * Math.PI) / 2;
+          }
+        }
+
+        if (dxPrev === -1 && dyPrev === 0) {
+          if (dxNext === 0 && dyNext === -1) {
+            return Math.PI / 2;
+          }
+          if (dxNext === 0 && dyNext === 1) {
+            return 0;
+          }
+        }
+
+        return null;
+      })();
+
+      if (cornerRotation !== null) {
+        drawSprite(cornerSprite, center.x, center.y, cornerRotation);
       } else {
         fallbackDraw(segment);
       }

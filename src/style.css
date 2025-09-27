@@ -9,7 +9,9 @@ body {
 
 body {
   margin: 0;
-  background: radial-gradient(circle at 20% -10%, #3f1c70 0%, #1d1a3b 45%, #05030f 100%);
+  background: url('/images/background.png');
+  background-size: 256px 256px;
+  background-repeat: repeat;
   color: #f4f4ff;
   display: flex;
   justify-content: center;
