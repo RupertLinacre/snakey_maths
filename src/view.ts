@@ -48,10 +48,11 @@ export async function init(): Promise<void> {
     throw new Error('Cannot initialise game: 2D context unavailable');
   }
 
-  const [headSprite, bodySprite, cornerSprite] = await Promise.all([
+  const [headSprite, bodySprite, cornerSprite, foodSprite] = await Promise.all([
     loadSprite('/sprites/snake_head.png'),
     loadSprite('/sprites/snake_body.png'),
     loadSprite('/sprites/snake_corner.png'),
+    loadSprite('/sprites/food.png'),
   ]);
 
   const logicalWidth = CANVAS_WIDTH;
@@ -300,22 +301,20 @@ export async function init(): Promise<void> {
       return;
     }
 
-    const radius = CELL / 2 - 4;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 20px "Fira Code", monospace';
+    ctx.font = 'bold 18px "Fira Code", monospace';
 
     for (const fruit of state.fruitByKey.values()) {
       const centerX = fruit.pos.x * CELL + CELL / 2;
       const centerY = gridOffsetY + fruit.pos.y * CELL + CELL / 2;
 
-      ctx.beginPath();
-      ctx.fillStyle = '#560197ff';
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fill();
+      drawSprite(foodSprite, centerX, centerY, 0);
 
-      ctx.fillStyle = '#ffffffff';
-      ctx.fillText(fruit.label, centerX, centerY + 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.textBaseline = 'top';
+      ctx.fillText(fruit.label, centerX, centerY + CELL / 2 - 2);
+      ctx.textBaseline = 'middle';
     }
   };
 
