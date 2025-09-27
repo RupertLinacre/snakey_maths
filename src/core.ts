@@ -1,11 +1,4 @@
-import {
-  COLS,
-  NUM_FRUITS,
-  PAUSE_MS_AFTER_CORRECT,
-  ROWS,
-  START_LIVES,
-  WRONG_FLASH_MS,
-} from './constants';
+import { COLS, NUM_FRUITS, ROWS, START_LIVES, WRONG_FLASH_MS } from './constants';
 import { isCorrect, newProblem, type MathLibProblem } from './math';
 import type { Dir, Fruit, GameEvent, Point, Problem, State } from './types';
 
@@ -307,13 +300,6 @@ export function reduce(state: State, event: GameEvent): State {
     }
     case 'TICK': {
       if (state.mode === 'paused') {
-        if (state.resumeAt !== undefined && event.now >= state.resumeAt) {
-          return validateState({
-            ...state,
-            mode: 'running',
-            resumeAt: undefined,
-          });
-        }
         return state;
       }
 
@@ -399,7 +385,7 @@ export function reduce(state: State, event: GameEvent): State {
           fruitByKey = spawnResult.fruitByKey;
           correctKey = spawnResult.correctKey;
           mode = 'paused';
-          resumeAt = event.now + PAUSE_MS_AFTER_CORRECT;
+          resumeAt = undefined;
           nextQueue = [];
           wrongFlashUntil = undefined;
         } else {

@@ -5,7 +5,6 @@ import {
   COLS,
   HUD_HEIGHT,
   NUM_FRUITS,
-  PAUSE_MS_AFTER_CORRECT,
   ROWS,
   START_LIVES,
   TICK_MS,
@@ -134,7 +133,7 @@ export function init(): void {
     ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
   };
 
-  const drawOverlay = (now: number) => {
+  const drawOverlay = () => {
     if (state.mode === 'paused') {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
@@ -143,15 +142,7 @@ export function init(): void {
       ctx.font = '20px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const remainingMs = state.resumeAt ? Math.max(0, state.resumeAt - now) : 0;
-      const pauseSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-      ctx.fillText(
-        pauseSeconds > 0
-          ? `Correct! Next round in ${pauseSeconds}s — press any key to resume`
-          : 'Correct! Press any key to resume',
-        logicalWidth / 2,
-        gridOffsetY + (logicalHeight - gridOffsetY) / 2,
-      );
+      ctx.fillText('Correct! Press any key to resume', logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
       return;
     }
 
@@ -180,7 +171,7 @@ export function init(): void {
     drawSnake();
     drawFruits();
     drawWrongFlash(now);
-    drawOverlay(now);
+    drawOverlay();
   };
 
   let state: State = initState();
@@ -300,7 +291,6 @@ export function init(): void {
     CANVAS_WIDTH,
     CANVAS_HEIGHT,
     TICK_MS,
-    PAUSE_MS_AFTER_CORRECT,
     NUM_FRUITS,
     START_LIVES,
     HUD_HEIGHT,
