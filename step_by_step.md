@@ -89,7 +89,7 @@ Phase 6 — Rendering ✅
 	•	Render Game Over when mode='gameover'.
 	•	Verify: visible overlay.
 
-Phase 7 — RNG and fruit system (stub problems)
+Phase 7 — RNG and fruit system (stub problems) ✅
 	17.	Seeded RNG injection
 
 	•	Implement small PRNG (mulberry32). Pass rng into spawn functions.
@@ -115,7 +115,7 @@ Phase 7 — RNG and fruit system (stub problems)
 	•	Circles with centered numbers.
 	•	Verify: numbers readable at chosen CELL.
 
-Phase 8 — Eating and lives
+Phase 8 — Eating and lives ✅
 	21.	Eat detection
 
 	•	On TICK, if head key in fruitByKey:

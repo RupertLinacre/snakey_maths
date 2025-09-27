@@ -8,6 +8,7 @@ export const CANVAS_HEIGHT = ROWS * CELL + HUD_HEIGHT;
 
 export const TICK_MS = 120;
 export const PAUSE_MS_AFTER_CORRECT = 5000;
+export const WRONG_FLASH_MS = 250;
 
 export const NUM_FRUITS = 4;
 export const START_LIVES = 3;

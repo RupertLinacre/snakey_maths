@@ -28,6 +28,7 @@ export type State = {
   fruitByKey: Map<string, Fruit>;
   correctKey?: string;
   problem?: Problem;
+  rngSeed: number;
   resumeAt?: number;
   wrongFlashUntil?: number;
 };

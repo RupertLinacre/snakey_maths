@@ -9,6 +9,7 @@ import {
   ROWS,
   START_LIVES,
   TICK_MS,
+  WRONG_FLASH_MS,
 } from './constants';
 import { initState, reduce } from './core';
 import type { Dir, GameEvent, State } from './types';
@@ -65,7 +66,8 @@ export function init(): void {
     ctx.font = '16px "Fira Code", monospace';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillText('Snake + Maths', 16, hudHeight / 2);
+    const expression = state.problem?.expression ?? 'Loading…';
+    ctx.fillText(`Problem: ${expression}`, 16, hudHeight / 2);
 
     ctx.textAlign = 'right';
     ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
@@ -93,7 +95,62 @@ export function init(): void {
     ctx.fillRect(headX, headY, CELL - padding * 2, CELL - padding * 2);
   };
 
+  const drawFruits = () => {
+    if (state.fruitByKey.size === 0) {
+      return;
+    }
+
+    const radius = CELL / 2 - 4;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 16px "Fira Code", monospace';
+
+    for (const fruit of state.fruitByKey.values()) {
+      const centerX = fruit.pos.x * CELL + CELL / 2;
+      const centerY = gridOffsetY + fruit.pos.y * CELL + CELL / 2;
+
+      ctx.beginPath();
+      ctx.fillStyle = '#f39c12';
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#111';
+      ctx.fillText(String(fruit.value), centerX, centerY + 1);
+    }
+  };
+
+  const drawWrongFlash = (now: number) => {
+    if (!state.wrongFlashUntil) {
+      return;
+    }
+
+    const remaining = state.wrongFlashUntil - now;
+    if (remaining <= 0) {
+      return;
+    }
+
+    const alpha = Math.min(0.5, Math.max(0, remaining / WRONG_FLASH_MS));
+    ctx.fillStyle = `rgba(255, 80, 80, ${alpha})`;
+    ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
+  };
+
   const drawOverlay = () => {
+    if (state.mode === 'paused') {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px "Fira Code", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(
+        'Correct! Next round in 5s — press any key to resume',
+        logicalWidth / 2,
+        gridOffsetY + (logicalHeight - gridOffsetY) / 2,
+      );
+      return;
+    }
+
     if (state.mode !== 'gameover') {
       return;
     }
@@ -108,11 +165,13 @@ export function init(): void {
     ctx.fillText('Game Over', logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
   };
 
-  const render = () => {
+  const render = (now: number) => {
     prepareContext();
     drawBackground();
     drawHud();
     drawSnake();
+    drawFruits();
+    drawWrongFlash(now);
     drawOverlay();
   };
 
@@ -154,7 +213,7 @@ export function init(): void {
       accumulator = 0;
     }
 
-    render();
+    render(now);
 
     frameCounter += 1;
     if (now - loopLogStart >= 1000) {
@@ -171,7 +230,7 @@ export function init(): void {
     rafId = requestAnimationFrame(frame);
   };
 
-  render();
+  render(performance.now());
   rafId = requestAnimationFrame(frame);
 
   const KEY_TO_DIR: Record<string, Dir> = {
@@ -183,6 +242,11 @@ export function init(): void {
 
   const handleKeyDown = (event: KeyboardEvent) => {
     const dir = KEY_TO_DIR[event.key];
+    const now = performance.now();
+
+    if (state.mode === 'paused') {
+      dispatch({ type: 'RESUME', now });
+    }
 
     if (!dir) {
       return;
@@ -217,6 +281,7 @@ export function init(): void {
     NUM_FRUITS,
     START_LIVES,
     HUD_HEIGHT,
+    WRONG_FLASH_MS,
     dpr,
   });
 }
