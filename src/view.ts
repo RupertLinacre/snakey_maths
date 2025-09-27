@@ -233,9 +233,9 @@ export async function init(): Promise<void> {
         case 'up':
           return Math.PI;
         case 'left':
-          return -Math.PI / 2;
-        case 'right':
           return Math.PI / 2;
+        case 'right':
+          return -Math.PI / 2;
         case 'down':
         default:
           return 0;
