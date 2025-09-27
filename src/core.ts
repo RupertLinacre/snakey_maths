@@ -276,16 +276,14 @@ export function reduce(state: State, event: GameEvent): State {
       if (state.mode !== 'running') {
         return state;
       }
-      if (state.dirQueue.length > 0) {
-        return state;
-      }
-      const prevDir = state.dir;
+      const prevDir = state.dirQueue[state.dirQueue.length - 1] ?? state.dir;
       if (prevDir === event.dir || isOpposite(prevDir, event.dir)) {
         return state;
       }
+      const nextQueue = [...state.dirQueue, event.dir];
       return validateState({
         ...state,
-        dirQueue: [...state.dirQueue, event.dir],
+        dirQueue: nextQueue,
       });
     }
     case 'RESUME': {
