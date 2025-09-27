@@ -10,7 +10,7 @@ import {
   TICK_MS,
 } from './constants';
 import { initState, reduce } from './core';
-import type { GameEvent, State } from './types';
+import type { Dir, GameEvent, State } from './types';
 
 export function init(): void {
   const root = document.querySelector<HTMLDivElement>('#app');
@@ -108,11 +108,34 @@ export function init(): void {
   renderBackground();
   rafId = requestAnimationFrame(frame);
 
+  const KEY_TO_DIR: Record<string, Dir> = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    const dir = KEY_TO_DIR[event.key];
+
+    if (!dir) {
+      return;
+    }
+
+    event.preventDefault();
+    dispatch({ type: 'TURN', dir });
+  };
+
+  window.addEventListener('keydown', handleKeyDown, { passive: false });
+
   const teardown = () => {
     if (rafId !== 0) {
       cancelAnimationFrame(rafId);
       rafId = 0;
     }
+
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('beforeunload', teardown);
   };
 
   window.addEventListener('beforeunload', teardown);

@@ -41,7 +41,7 @@ Phase 3 — Loop and FSM shell ✅
 	•	For now, TICK does nothing.
 	•	Verify: reducer returns new state without exceptions.
 
-Phase 4 — Movement and input
+Phase 4 — Movement and input ✅
 	9.	Movement
 
 	•	nextHead(state): Point from dir.
