@@ -1,6 +1,15 @@
 import { COLS, NUM_FRUITS, ROWS, START_LIVES, TICK_MS, WRONG_FLASH_MS } from './constants';
 import { isCorrect, newProblem, type MathLibProblem } from './math';
-import type { Dir, Fruit, GameEvent, Point, Problem, ProblemConfig, State } from './types';
+import type {
+  Dir,
+  Fruit,
+  GameEvent,
+  PauseReason,
+  Point,
+  Problem,
+  ProblemConfig,
+  State,
+} from './types';
 
 const START_DIR: Dir = 'right';
 const UINT32_MAX = 0xffffffff;
@@ -244,7 +253,7 @@ export function initState(
   seed?: number,
   config: ProblemConfig = {},
   tickMs: number = TICK_MS,
-  options?: { paused?: boolean; lives?: number },
+  options?: { paused?: boolean; lives?: number; pauseReason?: PauseReason },
 ): State {
   const startPos: Point = {
     x: Math.floor(COLS / 2),
@@ -272,13 +281,17 @@ export function initState(
     rngSeed,
     config,
     tickMs,
+    pauseReason: options?.paused ? options?.pauseReason ?? 'ready' : undefined,
   });
 }
 
 export function reduce(state: State, event: GameEvent): State {
   switch (event.type) {
     case 'RESTART':
-      return initState(undefined, state.config, state.tickMs, { paused: true });
+      return initState(undefined, state.config, state.tickMs, {
+        paused: true,
+        pauseReason: 'ready',
+      });
     case 'TURN': {
       if (state.mode === 'gameover') {
         return state;
@@ -297,11 +310,13 @@ export function reduce(state: State, event: GameEvent): State {
       return validateState({
         ...state,
         config: event.config,
+        pauseReason: 'ready',
       });
     case 'SET_SPEED':
       return validateState({
         ...state,
         tickMs: event.tickMs,
+        pauseReason: 'ready',
       });
     case 'PAUSE': {
       if (state.mode !== 'running') {
@@ -311,6 +326,7 @@ export function reduce(state: State, event: GameEvent): State {
         ...state,
         mode: 'paused',
         resumeAt: undefined,
+        pauseReason: event.reason ?? 'ui',
       });
     }
     case 'RESUME': {
@@ -321,6 +337,7 @@ export function reduce(state: State, event: GameEvent): State {
         ...state,
         mode: 'running',
         resumeAt: undefined,
+        pauseReason: undefined,
       });
     }
     case 'TICK': {
@@ -369,6 +386,8 @@ export function reduce(state: State, event: GameEvent): State {
           dir: nextDir,
           dirQueue: [],
           lives: remainingLives,
+          pauseReason: 'wall',
+          resumeAt: undefined,
         });
       }
 
@@ -395,6 +414,7 @@ export function reduce(state: State, event: GameEvent): State {
       let mode: State['mode'] = 'running';
       let resumeAt = state.resumeAt;
       let wrongFlashUntil = state.wrongFlashUntil;
+      let pauseReason = state.pauseReason;
 
       const fruit = state.fruitByKey.get(nextHeadKey);
       const libProblem = problem ? toLibProblem(problem) : undefined;
@@ -425,6 +445,7 @@ export function reduce(state: State, event: GameEvent): State {
           resumeAt = undefined;
           nextQueue = [];
           wrongFlashUntil = undefined;
+          pauseReason = 'correct';
         } else {
           lives = Math.max(0, lives - 1);
           wrongFlashUntil = event.now + WRONG_FLASH_MS;
@@ -441,6 +462,7 @@ export function reduce(state: State, event: GameEvent): State {
           if (lives === 0) {
             mode = 'gameover';
             resumeAt = undefined;
+            pauseReason = undefined;
           }
         }
       }
@@ -459,6 +481,7 @@ export function reduce(state: State, event: GameEvent): State {
         lives,
         resumeAt,
         wrongFlashUntil,
+        pauseReason,
       });
     }
     default:

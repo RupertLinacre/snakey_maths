@@ -28,6 +28,8 @@ export type ProblemConfig = {
   type?: string | null;
 };
 
+export type PauseReason = 'ready' | 'correct' | 'wall' | 'ui';
+
 export type State = {
   mode: GameMode;
   lives: number;
@@ -43,6 +45,7 @@ export type State = {
   wrongFlashUntil?: number;
   config: ProblemConfig;
   tickMs: number;
+  pauseReason?: PauseReason;
 };
 
 export type GameEvent =
@@ -52,4 +55,4 @@ export type GameEvent =
   | { type: 'RESTART'; now: number }
   | { type: 'SET_CONFIG'; config: ProblemConfig; now: number }
   | { type: 'SET_SPEED'; tickMs: number; now: number }
-  | { type: 'PAUSE'; reason?: 'ui' | 'correct'; now: number };
+  | { type: 'PAUSE'; reason?: PauseReason; now: number };

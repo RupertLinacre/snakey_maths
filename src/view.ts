@@ -342,16 +342,26 @@ export async function init(): Promise<void> {
       ctx.font = '20px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const message = (() => {
-        if (state.dirQueue.length === 0 && state.snake.length <= 1) {
-          return 'Ready? Press an arrow to start';
+      const lines = (() => {
+        if (state.pauseReason === 'ready') {
+          return ['Ready?', 'Press an arrow key to start'];
         }
-        if (state.lives < START_LIVES) {
-          return 'Oops, you hit the wall. Press an arrow key to continue';
+        if (state.pauseReason === 'wall') {
+          return ['Oops, you hit the wall.', 'Press an arrow key to continue'];
         }
-        return 'Correct! Press any key to resume';
+        if (state.pauseReason === 'correct') {
+          return ['Correct!', 'Press an arrow key to continue'];
+        }
+        return ['Paused', 'Press any key to resume'];
       })();
-      ctx.fillText(message, logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
+
+      const baseY = gridOffsetY + (logicalHeight - gridOffsetY) / 2;
+      const lineHeight = 28;
+      const startY = baseY - ((lines.length - 1) * lineHeight) / 2;
+
+      lines.forEach((line, index) => {
+        ctx.fillText(line, logicalWidth / 2, startY + index * lineHeight);
+      });
       return;
     }
 
