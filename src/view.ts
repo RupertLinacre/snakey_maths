@@ -343,7 +343,10 @@ export async function init(): Promise<void> {
       ctx.font = '20px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('Correct! Press any key to resume', logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
+      const message = state.dirQueue.length === 0 && state.snake.length <= 1
+        ? 'Ready? Press an arrow to start'
+        : 'Correct! Press any key to resume';
+      ctx.fillText(message, logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
       return;
     }
 
@@ -391,7 +394,7 @@ export async function init(): Promise<void> {
 
   const getTickMs = () => Number(speedSel.value || defaultTick);
 
-  let state: State = initState(undefined, currentConfig(), getTickMs());
+  let state: State = initState(undefined, currentConfig(), getTickMs(), { paused: true });
 
   const maxStepsPerFrame = 5;
   let stepIntervalMs = state.tickMs;

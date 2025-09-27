@@ -240,7 +240,12 @@ function randomSeed(): number {
   return (Math.random() * UINT32_MAX) >>> 0;
 }
 
-export function initState(seed?: number, config: ProblemConfig = {}, tickMs: number = TICK_MS): State {
+export function initState(
+  seed?: number,
+  config: ProblemConfig = {},
+  tickMs: number = TICK_MS,
+  options?: { paused?: boolean; lives?: number },
+): State {
   const startPos: Point = {
     x: Math.floor(COLS / 2),
     y: Math.floor(ROWS / 2),
@@ -255,8 +260,8 @@ export function initState(seed?: number, config: ProblemConfig = {}, tickMs: num
   rngSeed = fruitResult.seed;
 
   return validateState({
-    mode: 'running',
-    lives: START_LIVES,
+    mode: options?.paused ? 'paused' : 'running',
+    lives: options?.lives ?? START_LIVES,
     snake,
     snakeSet,
     dir: START_DIR,
@@ -273,7 +278,7 @@ export function initState(seed?: number, config: ProblemConfig = {}, tickMs: num
 export function reduce(state: State, event: GameEvent): State {
   switch (event.type) {
     case 'RESTART':
-      return initState(undefined, state.config, state.tickMs);
+      return initState(undefined, state.config, state.tickMs, { paused: true });
     case 'TURN': {
       if (state.mode === 'gameover') {
         return state;
@@ -346,12 +351,24 @@ export function reduce(state: State, event: GameEvent): State {
       };
 
       if (isOutOfBounds(nextHead)) {
+        const remainingLives = state.lives - 1;
+        if (remainingLives <= 0) {
+          return validateState({
+            ...state,
+            mode: 'gameover',
+            dir: nextDir,
+            dirQueue: [],
+            resumeAt: undefined,
+            lives: 0,
+          });
+        }
+
         return validateState({
           ...state,
-          mode: 'gameover',
+          mode: 'paused',
           dir: nextDir,
           dirQueue: [],
-          resumeAt: undefined,
+          lives: remainingLives,
         });
       }
 
