@@ -11,5 +11,8 @@
   "devDependencies": {
     "typescript": "~5.8.3",
     "vite": "^7.1.7"
+  },
+  "dependencies": {
+    "maths-game-problem-generator": "file:../maths-game-problem-generator"
   }
 }
