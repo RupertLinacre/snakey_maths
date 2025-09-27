@@ -19,6 +19,10 @@ function isOpposite(a: Dir, b: Dir): boolean {
   );
 }
 
+function isOutOfBounds(point: Point): boolean {
+  return point.x < 0 || point.x >= COLS || point.y < 0 || point.y >= ROWS;
+}
+
 export function pointKey(point: Point): string {
   return `${point.x},${point.y}`;
 }
@@ -47,7 +51,7 @@ export function reduce(state: State, event: GameEvent): State {
   switch (event.type) {
     case 'RESTART':
       return initState();
-    case 'TURN':
+    case 'TURN': {
       if (state.mode !== 'running') {
         return state;
       }
@@ -56,64 +60,80 @@ export function reduce(state: State, event: GameEvent): State {
         return state;
       }
 
-      {
-        const prevDir = state.dir;
+      const prevDir = state.dir;
 
-        if (prevDir === event.dir || isOpposite(prevDir, event.dir)) {
-          return state;
-        }
-
-        return {
-          ...state,
-          dirQueue: [...state.dirQueue, event.dir],
-        };
+      if (prevDir === event.dir || isOpposite(prevDir, event.dir)) {
+        return state;
       }
+
+      return {
+        ...state,
+        dirQueue: [...state.dirQueue, event.dir],
+      };
+    }
     case 'RESUME':
       return state;
-    case 'TICK':
+    case 'TICK': {
       if (state.mode !== 'running') {
         return state;
       }
 
-      {
-        if (state.snake.length === 0) {
-          return state;
-        }
+      if (state.snake.length === 0) {
+        return state;
+      }
 
-        let nextDir = state.dir;
-        let nextQueue = state.dirQueue;
+      let nextDir = state.dir;
+      let nextQueue = state.dirQueue;
 
-        if (nextQueue.length > 0) {
-          nextDir = nextQueue[0];
-          nextQueue = nextQueue.slice(1);
-        }
+      if (nextQueue.length > 0) {
+        nextDir = nextQueue[0];
+        nextQueue = nextQueue.slice(1);
+      }
 
-        const head = state.snake[0];
-        const delta = DIR_VECTORS[nextDir];
-        const nextHead: Point = {
-          x: head.x + delta.x,
-          y: head.y + delta.y,
-        };
+      const head = state.snake[0];
+      const delta = DIR_VECTORS[nextDir];
+      const nextHead: Point = {
+        x: head.x + delta.x,
+        y: head.y + delta.y,
+      };
 
-        const nextSnake = [nextHead, ...state.snake.slice(0, Math.max(state.snake.length - 1, 0))];
-
-        const nextSnakeSet = new Set(state.snakeSet);
-
-        if (state.snake.length > 0) {
-          const tail = state.snake[state.snake.length - 1];
-          nextSnakeSet.delete(pointKey(tail));
-        }
-
-        nextSnakeSet.add(pointKey(nextHead));
-
+      if (isOutOfBounds(nextHead)) {
         return {
           ...state,
           dir: nextDir,
-          dirQueue: nextQueue,
-          snake: nextSnake,
-          snakeSet: nextSnakeSet,
+          dirQueue: [],
+          mode: 'gameover',
         };
       }
+
+      const nextHeadKey = pointKey(nextHead);
+      const tail = state.snake[state.snake.length - 1];
+      const tailKey = pointKey(tail);
+      const steppingIntoTail = state.snake.length > 1 && nextHeadKey === tailKey;
+
+      if (state.snakeSet.has(nextHeadKey) && !steppingIntoTail) {
+        return {
+          ...state,
+          dir: nextDir,
+          dirQueue: [],
+          mode: 'gameover',
+        };
+      }
+
+      const nextSnake = [nextHead, ...state.snake.slice(0, Math.max(state.snake.length - 1, 0))];
+
+      const nextSnakeSet = new Set(state.snakeSet);
+      nextSnakeSet.delete(tailKey);
+      nextSnakeSet.add(nextHeadKey);
+
+      return {
+        ...state,
+        dir: nextDir,
+        dirQueue: nextQueue,
+        snake: nextSnake,
+        snakeSet: nextSnakeSet,
+      };
+    }
     default:
       return state;
   }

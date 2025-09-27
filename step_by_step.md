@@ -56,7 +56,7 @@ Phase 4 — Movement and input ✅
 	•	On TICK, consume one queued dir.
 	•	Verify: turning works; reversal blocked.
 
-Phase 5 — Collisions and endings
+Phase 5 — Collisions and endings ✅
 	11.	Wall collision (Nokia)
 
 	•	If next head is out of bounds → mode='gameover'.
@@ -72,7 +72,7 @@ Phase 5 — Collisions and endings
 	•	Tests for nextHead, 180° block, wall collision, self collision.
 	•	Verify: all green.
 
-Phase 6 — Rendering
+Phase 6 — Rendering ✅
 	14.	Draw snake
 
 	•	Head and body rectangles. No gridlines.

@@ -3,6 +3,7 @@ import {
   CANVAS_WIDTH,
   CELL,
   COLS,
+  HUD_HEIGHT,
   NUM_FRUITS,
   PAUSE_MS_AFTER_CORRECT,
   ROWS,
@@ -42,12 +43,77 @@ export function init(): void {
   canvas.width = pixelWidth;
   canvas.height = pixelHeight;
 
-  const renderBackground = () => {
+  const hudHeight = HUD_HEIGHT;
+  const gridOffsetY = hudHeight;
+
+  const prepareContext = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
+  };
+
+  const drawBackground = () => {
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+  };
+
+  const drawHud = () => {
+    ctx.fillStyle = '#181818';
+    ctx.fillRect(0, 0, logicalWidth, hudHeight);
+
+    ctx.fillStyle = '#f2f2f2';
+    ctx.font = '16px "Fira Code", monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText('Snake + Maths', 16, hudHeight / 2);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
+  };
+
+  const drawSnake = () => {
+    if (state.snake.length === 0) {
+      return;
+    }
+
+    const head = state.snake[0];
+    const body = state.snake.slice(1);
+    const padding = 2;
+
+    ctx.fillStyle = '#2ecc71';
+    for (const segment of body) {
+      const x = segment.x * CELL + padding;
+      const y = gridOffsetY + segment.y * CELL + padding;
+      ctx.fillRect(x, y, CELL - padding * 2, CELL - padding * 2);
+    }
+
+    const headX = head.x * CELL + padding;
+    const headY = gridOffsetY + head.y * CELL + padding;
+    ctx.fillStyle = '#48ff9b';
+    ctx.fillRect(headX, headY, CELL - padding * 2, CELL - padding * 2);
+  };
+
+  const drawOverlay = () => {
+    if (state.mode !== 'gameover') {
+      return;
+    }
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '24px "Fira Code", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Game Over', logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
+  };
+
+  const render = () => {
+    prepareContext();
+    drawBackground();
+    drawHud();
+    drawSnake();
+    drawOverlay();
   };
 
   let state: State = initState();
@@ -88,7 +154,7 @@ export function init(): void {
       accumulator = 0;
     }
 
-    renderBackground();
+    render();
 
     frameCounter += 1;
     if (now - loopLogStart >= 1000) {
@@ -105,7 +171,7 @@ export function init(): void {
     rafId = requestAnimationFrame(frame);
   };
 
-  renderBackground();
+  render();
   rafId = requestAnimationFrame(frame);
 
   const KEY_TO_DIR: Record<string, Dir> = {
@@ -150,6 +216,7 @@ export function init(): void {
     PAUSE_MS_AFTER_CORRECT,
     NUM_FRUITS,
     START_LIVES,
+    HUD_HEIGHT,
     dpr,
   });
 }

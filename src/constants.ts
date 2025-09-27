@@ -3,7 +3,8 @@ export const COLS = 24;
 export const ROWS = 24;
 
 export const CANVAS_WIDTH = COLS * CELL;
-export const CANVAS_HEIGHT = ROWS * CELL;
+export const HUD_HEIGHT = CELL;
+export const CANVAS_HEIGHT = ROWS * CELL + HUD_HEIGHT;
 
 export const TICK_MS = 120;
 export const PAUSE_MS_AFTER_CORRECT = 5000;
