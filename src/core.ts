@@ -1,6 +1,6 @@
 import { COLS, NUM_FRUITS, ROWS, START_LIVES, WRONG_FLASH_MS } from './constants';
 import { isCorrect, newProblem, type MathLibProblem } from './math';
-import type { Dir, Fruit, GameEvent, Point, Problem, State } from './types';
+import type { Dir, Fruit, GameEvent, Point, Problem, ProblemConfig, State } from './types';
 
 const START_DIR: Dir = 'right';
 const UINT32_MAX = 0xffffffff;
@@ -240,7 +240,7 @@ function randomSeed(): number {
   return (Math.random() * UINT32_MAX) >>> 0;
 }
 
-export function initState(seed?: number): State {
+export function initState(seed?: number, config: ProblemConfig = {}): State {
   const startPos: Point = {
     x: Math.floor(COLS / 2),
     y: Math.floor(ROWS / 2),
@@ -250,7 +250,7 @@ export function initState(seed?: number): State {
   const snakeSet = new Set<string>([pointKey(startPos)]);
 
   let rngSeed = typeof seed === 'number' ? seed >>> 0 : randomSeed();
-  const problem = normaliseProblem(newProblem());
+  const problem = normaliseProblem(newProblem(config));
   const fruitResult = spawnFruitSet(snakeSet, rngSeed, problem);
   rngSeed = fruitResult.seed;
 
@@ -265,13 +265,14 @@ export function initState(seed?: number): State {
     correctKey: fruitResult.correctKey,
     problem,
     rngSeed,
+    config,
   });
 }
 
 export function reduce(state: State, event: GameEvent): State {
   switch (event.type) {
     case 'RESTART':
-      return initState();
+      return initState(undefined, state.config);
     case 'TURN': {
       if (state.mode !== 'running') {
         return state;
@@ -284,6 +285,21 @@ export function reduce(state: State, event: GameEvent): State {
       return validateState({
         ...state,
         dirQueue: nextQueue,
+      });
+    }
+    case 'SET_CONFIG':
+      return validateState({
+        ...state,
+        config: event.config,
+      });
+    case 'PAUSE': {
+      if (state.mode !== 'running') {
+        return state;
+      }
+      return validateState({
+        ...state,
+        mode: 'paused',
+        resumeAt: undefined,
       });
     }
     case 'RESUME': {
@@ -376,7 +392,7 @@ export function reduce(state: State, event: GameEvent): State {
 
       if (fruit) {
         if (isCorrectFruit) {
-          const nextProblem = normaliseProblem(newProblem());
+          const nextProblem = normaliseProblem(newProblem(state.config));
           problem = nextProblem;
           const spawnResult = spawnFruitSet(nextSnakeSet, rngSeed, nextProblem);
           rngSeed = spawnResult.seed;

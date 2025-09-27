@@ -1,6 +1,6 @@
 Add two HTML <select> controls for Year level and Problem type that configure problem generation. Selections persist in localStorage and take effect on the next problem only. Focus rules: when a control is focused the game pauses and arrow keys change the selection; when the canvas is focused it resumes and arrow keys move the snake. The canvas is focusable and gains focus on load. One global keydown handler ignores inputs when the event target is interactive.
 
-0) Prep
+0) Prep ✅
 	1.	Create a single cleanup handle
 
 	•	In view.ts top of init(): const ac = new AbortController(); const { signal } = ac;
@@ -10,7 +10,7 @@ Verify: console logs still print, no listener leaks on HMR.
 
 ⸻
 
-1) HTML controls
+1) HTML controls ✅
 	2.	Add controls markup
 
 	•	Edit index.html, above <canvas>:
@@ -32,7 +32,7 @@ Verify: controls render above canvas.
 
 ⸻
 
-2) Make canvas focusable and default focus
+2) Make canvas focusable and default focus ✅
 	4.	Focusable canvas
 
 	•	In view.ts after you get canvas:
@@ -48,7 +48,7 @@ Verify: page loads with visible focus ring on canvas (depends on UA/CSS). Clicki
 
 ⸻
 
-3) State config + events
+3) State config + events ✅
 	5.	Add config type and events
 
 	•	Edit src/types.ts:
@@ -94,7 +94,7 @@ Verify: compiles.
 
 ⸻
 
-4) Populate selects and persist config
+4) Populate selects and persist config ✅
 	7.	Import constants
 
 	•	At top of view.ts:
@@ -150,7 +150,7 @@ Verify: changing selects doesn’t break game; next generated problem matches se
 
 ⸻
 
-5) Focus-aware input routing
+5) Focus-aware input routing ✅
 	11.	Interactive target guard
 
 	•	In view.ts above handlers:
@@ -201,7 +201,7 @@ Verify: focusing a select pauses; clicking canvas resumes.
 
 ⸻
 
-6) HUD robustness
+6) HUD robustness ✅
 	14.	Truncate long expressions
 
 	•	In view.ts, add helper:
@@ -224,7 +224,7 @@ Verify: no overflow when problems are long.
 
 ⸻
 
-7) Cleanup and HMR
+7) Cleanup and HMR ✅
 	15.	AbortController cleanup
 
 	•	Replace previous explicit removes with:
@@ -238,7 +238,7 @@ Verify: HMR doesn’t duplicate listeners; no console warnings.
 
 ⸻
 
-8) QA passes
+8) QA passes ✅
 	16.	Manual checks
 
 	•	Canvas has focus on load. Arrows move snake.

@@ -10,10 +10,14 @@ import {
   TICK_MS,
   WRONG_FLASH_MS,
 } from './constants';
+import { YEAR_LEVELS, PROBLEM_TYPES } from './math';
 import { initState, reduce } from './core';
 import type { Dir, GameEvent, State } from './types';
 
 export function init(): void {
+  const ac = new AbortController();
+  const { signal } = ac;
+
   const root = document.querySelector<HTMLDivElement>('#app');
 
   if (!root) {
@@ -43,6 +47,68 @@ export function init(): void {
   canvas.width = pixelWidth;
   canvas.height = pixelHeight;
 
+  canvas.tabIndex = 0;
+  canvas.setAttribute('role', 'application');
+  canvas.setAttribute('aria-label', 'Snake. Arrow keys to move. Enter to restart.');
+  canvas.addEventListener(
+    'pointerdown',
+    () => {
+      canvas.focus();
+    },
+    { signal },
+  );
+
+  const yearSel = document.getElementById('year') as HTMLSelectElement | null;
+  const typeSel = document.getElementById('ptype') as HTMLSelectElement | null;
+
+  if (!yearSel || !typeSel) {
+    throw new Error('Cannot initialise game: #year or #ptype control not found');
+  }
+
+  const YEARS = Object.values(YEAR_LEVELS);
+  const yearOptions = YEARS.map((value) => new Option(value, value));
+  yearSel.replaceChildren(...yearOptions);
+
+  const TYPES = Object.values(PROBLEM_TYPES);
+  while (typeSel.options.length > 1) {
+    typeSel.remove(1);
+  }
+  for (const value of TYPES) {
+    typeSel.add(new Option(value, value));
+  }
+
+  const LS_KEY = 'snake-maths:config';
+  const loadCfg = (): State['config'] => {
+    try {
+      return JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') ?? {};
+    } catch (error) {
+      console.warn('snake-maths:config:load failed', error);
+      return {};
+    }
+  };
+
+  const saveCfg = (config: State['config']) => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(config));
+    } catch (error) {
+      console.warn('snake-maths:config:save failed', error);
+    }
+  };
+
+  const defaultCfg = loadCfg();
+  const defaultYear = defaultCfg.yearLevel && YEARS.includes(defaultCfg.yearLevel)
+    ? defaultCfg.yearLevel
+    : YEARS[2] ?? YEARS[0] ?? '';
+  if (defaultYear) {
+    yearSel.value = defaultYear;
+  }
+
+  if (defaultCfg.type && TYPES.includes(defaultCfg.type)) {
+    typeSel.value = defaultCfg.type;
+  } else {
+    typeSel.value = '';
+  }
+
   const hudHeight = HUD_HEIGHT;
   const gridOffsetY = hudHeight;
 
@@ -57,6 +123,19 @@ export function init(): void {
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
   };
 
+  const ellipsis = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string => {
+    if (context.measureText(text).width <= maxWidth) {
+      return text;
+    }
+
+    let trimmed = text;
+    while (trimmed.length > 0 && context.measureText(`${trimmed}…`).width > maxWidth) {
+      trimmed = trimmed.slice(0, -1);
+    }
+
+    return trimmed.length > 0 ? `${trimmed}…` : text;
+  };
+
   const drawHud = () => {
     ctx.fillStyle = '#181818';
     ctx.fillRect(0, 0, logicalWidth, hudHeight);
@@ -65,8 +144,11 @@ export function init(): void {
     ctx.font = '16px "Fira Code", monospace';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    const expression = state.problem?.expression ?? 'Loading…';
-    ctx.fillText(`Problem: ${expression}`, 16, hudHeight / 2);
+    const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
+    const label = `Problem: ${expr}`;
+    const maxLabelWidth = logicalWidth - 140;
+    const displayed = ellipsis(ctx, label, maxLabelWidth);
+    ctx.fillText(displayed, 16, hudHeight / 2);
 
     ctx.textAlign = 'right';
     ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
@@ -174,11 +256,27 @@ export function init(): void {
     drawOverlay();
   };
 
-  let state: State = initState();
+  const currentConfig = (): State['config'] => ({
+    yearLevel: yearSel.value || undefined,
+    type: typeSel.value || null,
+  });
+
+  saveCfg(currentConfig());
+
+  let state: State = initState(undefined, currentConfig());
 
   const dispatch = (event: GameEvent) => {
     state = reduce(state, event);
   };
+
+  const applyConfig = () => {
+    const cfg = currentConfig();
+    saveCfg(cfg);
+    dispatch({ type: 'SET_CONFIG', config: cfg, now: performance.now() });
+  };
+
+  yearSel.addEventListener('change', applyConfig, { signal });
+  typeSel.addEventListener('change', applyConfig, { signal });
 
   const stepIntervalMs = TICK_MS;
   const maxStepsPerFrame = 5;
@@ -230,7 +328,17 @@ export function init(): void {
   };
 
   render(performance.now());
+  canvas.focus();
   rafId = requestAnimationFrame(frame);
+
+  const stopLoop = () => {
+    if (rafId !== 0) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  };
+
+  signal.addEventListener('abort', stopLoop, { once: true });
 
   const KEY_TO_DIR: Record<string, Dir> = {
     ArrowUp: 'up',
@@ -239,11 +347,25 @@ export function init(): void {
     ArrowRight: 'right',
   };
 
+  const isInteractiveTarget = (target: EventTarget | null): boolean => {
+    const el = target as HTMLElement | null;
+    if (!el) {
+      return false;
+    }
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+  };
+
   const handleKeyDown = (event: KeyboardEvent) => {
+    if (isInteractiveTarget(event.target)) {
+      return;
+    }
+
     const now = performance.now();
 
     if (state.mode === 'paused') {
       dispatch({ type: 'RESUME', now });
+      return;
     }
 
     if (event.key === 'Enter') {
@@ -264,23 +386,32 @@ export function init(): void {
     dispatch({ type: 'TURN', dir });
   };
 
-  window.addEventListener('keydown', handleKeyDown, { passive: false });
+  window.addEventListener('keydown', handleKeyDown, { passive: false, signal });
 
-  const teardown = () => {
-    if (rafId !== 0) {
-      cancelAnimationFrame(rafId);
-      rafId = 0;
-    }
+  const pauseForUi = () => dispatch({ type: 'PAUSE', reason: 'ui', now: performance.now() });
 
-    window.removeEventListener('keydown', handleKeyDown);
-    window.removeEventListener('beforeunload', teardown);
-  };
+  yearSel.addEventListener('focusin', pauseForUi, { signal });
+  typeSel.addEventListener('focusin', pauseForUi, { signal });
 
-  window.addEventListener('beforeunload', teardown);
+  canvas.addEventListener(
+    'focusin',
+    () => {
+      dispatch({ type: 'RESUME', now: performance.now() });
+    },
+    { signal },
+  );
+
+  window.addEventListener(
+    'beforeunload',
+    () => {
+      ac.abort();
+    },
+    { once: true },
+  );
 
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
-      teardown();
+      ac.abort();
     });
   }
 

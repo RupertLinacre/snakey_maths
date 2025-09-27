@@ -23,6 +23,11 @@ export type Problem = {
   yearLevel?: string;
 };
 
+export type ProblemConfig = {
+  yearLevel?: string;
+  type?: string | null;
+};
+
 export type State = {
   mode: GameMode;
   lives: number;
@@ -36,10 +41,13 @@ export type State = {
   rngSeed: number;
   resumeAt?: number;
   wrongFlashUntil?: number;
+  config: ProblemConfig;
 };
 
 export type GameEvent =
   | { type: 'TICK'; now: number }
   | { type: 'TURN'; dir: Dir }
   | { type: 'RESUME'; now: number }
-  | { type: 'RESTART'; now: number };
+  | { type: 'RESTART'; now: number }
+  | { type: 'SET_CONFIG'; config: ProblemConfig; now: number }
+  | { type: 'PAUSE'; reason?: 'ui' | 'correct'; now: number };
