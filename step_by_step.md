@@ -1,218 +1,252 @@
+Add two HTML <select> controls for Year level and Problem type that configure problem generation. Selections persist in localStorage and take effect on the next problem only. Focus rules: when a control is focused the game pauses and arrow keys change the selection; when the canvas is focused it resumes and arrow keys move the snake. The canvas is focusable and gains focus on load. One global keydown handler ignores inputs when the event target is interactive.
 
+0) Prep
+	1.	Create a single cleanup handle
 
-Phase 1 — Files and contracts ✅
-	3.	Create minimal files
+	•	In view.ts top of init(): const ac = new AbortController(); const { signal } = ac;
+	•	In HMR dispose and beforeunload: call ac.abort() and stop RAF.
 
-	•	src/constants.ts, src/types.ts, src/core.ts, src/view.ts
-	•	In main.ts, call init() from view.ts.
-	•	Verify: compile and a console log from init().
+Verify: console logs still print, no listener leaks on HMR.
 
-	4.	Define constants
+⸻
 
-	•	Grid: CELL, COLS, ROWS, canvas size.
-	•	Timing: TICK_MS, PAUSE_MS_AFTER_CORRECT.
-	•	Game: NUM_FRUITS, START_LIVES.
-	•	Verify: import and log values.
+1) HTML controls
+	2.	Add controls markup
 
-	5.	Define types
+	•	Edit index.html, above <canvas>:
 
-	•	Point, Dir, GameMode = 'running'|'paused'|'gameover'
-	•	Fruit { pos:Point; value:number; correct:boolean }
-	•	Problem { expression:string; answer:number }
-	•	State { mode, lives, snake:Point[], snakeSet:Set<string>, dir, dirQueue:Dir[], fruitByKey:Map<string,Fruit>, correctKey?:string, problem?:Problem, resumeAt?:number, wrongFlashUntil?:number }
-	•	Verify: type-check passes.
+<div id="controls" class="controls">
+  <label>Year level <select id="year"></select></label>
+  <label>Problem type <select id="ptype"><option value="">Any</option></select></label>
+</div>
 
-Phase 2 — Canvas + DPR ✅
-	6.	Canvas setup in view.ts
+	3.	Optional CSS
 
-	•	Create <canvas id="game"> in index.html.
-	•	Handle devicePixelRatio. Scale context. Keep logical width/height from constants.
-	•	Verify: a background fill renders crisp (no blur).
+	•	In style.css:
 
-Phase 3 — Loop and FSM shell ✅
-	7.	RAF + fixed timestep
+#controls{display:flex;gap:.75rem;align-items:center;padding:.5rem}
+#controls label{color:#eee;font:14px system-ui}
+#controls select{font:14px system-ui}
 
-	•	RAF with accumulator. Step at TICK_MS. Cap steps (e.g., 5).
-	•	Verify: counters show stable tick rate.
+Verify: controls render above canvas.
 
-	8.	Reducer skeleton in core.ts
+⸻
 
-	•	initState(), reduce(state, event) with events: TICK, TURN(dir), RESUME, RESTART.
-	•	For now, TICK does nothing.
-	•	Verify: reducer returns new state without exceptions.
+2) Make canvas focusable and default focus
+	4.	Focusable canvas
 
-Phase 4 — Movement and input ✅
-	9.	Movement
+	•	In view.ts after you get canvas:
 
-	•	nextHead(state): Point from dir.
-	•	On TICK: unshift head, pop tail.
-	•	Maintain snakeSet O(1): add head key, delete popped tail key.
-	•	Verify: snake moves right across empty board.
+canvas.tabIndex = 0;
+canvas.setAttribute('role','application');
+canvas.setAttribute('aria-label','Snake. Arrow keys to move. Enter to restart.');
+canvas.addEventListener('pointerdown', () => canvas.focus(), { signal });
 
-	10.	Input queue
+	•	After first render(...): canvas.focus();
 
-	•	Keydown arrows enqueue at most one dir per tick.
-	•	Reject 180° turns.
-	•	On TICK, consume one queued dir.
-	•	Verify: turning works; reversal blocked.
+Verify: page loads with visible focus ring on canvas (depends on UA/CSS). Clicking canvas keeps focus.
 
-Phase 5 — Collisions and endings ✅
-	11.	Wall collision (Nokia)
+⸻
 
-	•	If next head is out of bounds → mode='gameover'.
-	•	Verify: hitting border ends game.
+3) State config + events
+	5.	Add config type and events
 
-	12.	Self collision
+	•	Edit src/types.ts:
 
-	•	If next head in snakeSet → mode='gameover'.
-	•	Verify: turning into self ends game.
+export type ProblemConfig = { yearLevel?: string; type?: string | null };
 
-	13.	Unit tests (vitest)
+export type State = {
+  // existing...
+  config: ProblemConfig;
+};
 
-	•	Tests for nextHead, 180° block, wall collision, self collision.
-	•	Verify: all green.
+export type GameEvent =
+  | { type: 'TICK'; now: number }
+  | { type: 'TURN'; dir: Dir }
+  | { type: 'RESUME'; now: number }
+  | { type: 'RESTART'; now: number }
+  | { type: 'SET_CONFIG'; config: ProblemConfig; now: number }
+  | { type: 'PAUSE'; reason?: 'ui'|'correct'; now: number };
 
-Phase 6 — Rendering ✅
-	14.	Draw snake
+	6.	Wire config through core
 
-	•	Head and body rectangles. No gridlines.
-	•	Verify: smooth movement.
+	•	Edit src/core.ts:
+	•	Import ProblemConfig from ./types.
+	•	Change signature:
 
-	15.	HUD row reservation
+export function initState(seed?: number, config: ProblemConfig = {}): State
 
-	•	Reserve one top HUD stripe (outside grid) for text.
-	•	Adjust snake bounds to exclude HUD.
-	•	Verify: snake never overlaps HUD.
 
-	16.	Overlays
+	•	In returned state, add config.
+	•	Replace both newProblem() calls with newProblem(config) and newProblem(state.config) respectively.
+	•	Add handler in reduce:
 
-	•	Render Game Over when mode='gameover'.
-	•	Verify: visible overlay.
+case 'SET_CONFIG': return validateState({ ...state, config: event.config });
+case 'PAUSE': {
+  if (state.mode !== 'running') return state;
+  return validateState({ ...state, mode: 'paused' });
+}
 
-Phase 7 — RNG and fruit system (stub problems) ✅
-	17.	Seeded RNG injection
 
-	•	Implement small PRNG (mulberry32). Pass rng into spawn functions.
-	•	Verify: same seed → same fruit positions.
+	•	In the “correct fruit” branch where you mode='paused', also set reason:'correct' only in overlay text (no code change needed). Keep current behavior.
 
-	18.	Fruit placement
+Verify: compiles.
 
-	•	spawnFruits(state, problem, rng):
-	•	Choose unique empty cells (not in snakeSet).
-	•	Build fruitByKey map of size NUM_FRUITS.
-	•	Set exactly one correctKey.
-	•	Verify: unique cells; map size == NUM_FRUITS.
+⸻
 
-	19.	Distractors (integers)
+4) Populate selects and persist config
+	7.	Import constants
 
-	•	makeDistractors(answer, n, rng):
-	•	Unique integers, not equal to answer.
-	•	Reasonable range around answer.
-	•	Verify: uniqueness and not equal to answer.
+	•	At top of view.ts:
 
-	20.	Render fruits
+import { YEAR_LEVELS, PROBLEM_TYPES } from './math';
 
-	•	Circles with centered numbers.
-	•	Verify: numbers readable at chosen CELL.
+	8.	Build options and persistence
 
-Phase 8 — Eating and lives ✅
-	21.	Eat detection
+	•	In init() after canvas setup:
 
-	•	On TICK, if head key in fruitByKey:
-	•	If correctKey: set flag ateCorrect=true.
-	•	Else: ateWrong=true.
-	•	Verify: events fire on contact.
+const yearSel = document.getElementById('year') as HTMLSelectElement;
+const typeSel = document.getElementById('ptype') as HTMLSelectElement;
 
-	22.	Wrong fruit path
+const YEARS = Object.values(YEAR_LEVELS); // robust if keys vary
+yearSel.replaceChildren(...YEARS.map(v => new Option(v, v)));
 
-	•	lives -= 1; wrongFlashUntil = now + 250.
-	•	Remove that fruit and immediately spawn a new wrong fruit to keep NUM_FRUITS.
-	•	If lives == 0 → mode='gameover'.
-	•	Verify: life decrements; fruit count stays constant; red flash.
+const TYPES = Object.values(PROBLEM_TYPES);
+for (const v of TYPES) typeSel.add(new Option(v, v));
 
-	23.	Correct fruit path
+const LS_KEY = 'snake-maths:config';
+const loadCfg = () => {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+};
+const saveCfg = (c: State['config']) => localStorage.setItem(LS_KEY, JSON.stringify(c));
 
-	•	Grow snake: skip tail pop for this tick.
-	•	Generate new problem and new fruits.
-	•	Set mode='paused', resumeAt = now + PAUSE_MS_AFTER_CORRECT.
-	•	Verify: growth by 1; new fruits appear; mode is paused.
+const defaultCfg = loadCfg() as State['config'];
+if (defaultCfg.yearLevel && YEARS.includes(defaultCfg.yearLevel)) yearSel.value = defaultCfg.yearLevel;
+else yearSel.value = YEARS[2] ?? YEARS[0]; // sensible default
 
-	24.	Pause handling
+typeSel.value = defaultCfg.type ?? '';
 
-	•	While paused: ignore movement ticks.
-	•	Resume on any key (RESUME) or when now >= resumeAt.
-	•	Verify: both resume paths work.
+	9.	Init state with UI config
 
-	25.	Tests
+	•	Replace current let state: State = initState(); with:
 
-	•	Correct eat grows + pauses + regenerates fruits.
-	•	Wrong eat decrements lives and continues.
-	•	Verify: all green.
+const currentConfig = (): State['config'] => ({
+  yearLevel: yearSel.value || undefined,
+  type: typeSel.value || null
+});
+let state: State = initState(undefined, currentConfig());
 
-Phase 9 — Maths library integration ✅
-	26.	Adapter
+	10.	Apply on change
 
-	•	src/math.ts:
+const applyConfig = () => {
+  const cfg = currentConfig();
+  saveCfg(cfg);
+  dispatch({ type: 'SET_CONFIG', config: cfg, now: performance.now() });
+};
+yearSel.addEventListener('change', applyConfig, { signal });
+typeSel.addEventListener('change', applyConfig, { signal });
 
-import { generateProblem, checkAnswer, YEAR_LEVELS, PROBLEM_TYPES } from 'maths-game-problem-generator';
-export function newProblem(opts?) { return generateProblem(opts); }
-export function isCorrect(p, v:number) { return checkAnswer(p, v); }
-export { YEAR_LEVELS, PROBLEM_TYPES };
+Verify: changing selects doesn’t break game; next generated problem matches selection.
 
+⸻
 
-	•	Verify: imports resolve.
+5) Focus-aware input routing
+	11.	Interactive target guard
 
-	27.	Swap stub for real
+	•	In view.ts above handlers:
 
-	•	On correct eat: state.problem = newProblem(opts).
-	•	Fruits: correct fruit value = problem.answer; distractors ensure integers. If decimals occur, use formattedAnswer for labels and still compare with checkAnswer.
-	•	Verify: problem.expression looks sane; one correct fruit matches.
+function isInteractiveTarget(t: EventTarget | null): boolean {
+  const el = t as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
 
-	28.	HUD problem text
+	12.	Keydown handler update
 
-	•	Draw problem.expression in reserved HUD.
-	•	Verify: matches the correct fruit value.
+	•	Replace existing handleKeyDown with:
 
-Phase 10 — UX polish and HMR ✅
-	29.	Visual feedback
+const KEY_TO_DIR: Record<string, Dir> = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+};
 
-	•	Wrong flash (red tint for 200–300 ms). Correct overlay with “Next in 5s or press any key”.
-	•	Verify: both visible.
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (isInteractiveTarget(event.target)) return; // let controls use arrows
 
-	30.	Restart flow
+  const now = performance.now();
+  if (state.mode === 'paused') { dispatch({ type:'RESUME', now }); return; }
 
-	•	On gameover, Enter creates fresh state = initState(seed?).
-	•	Verify: clean restart.
+  if (event.key === 'Enter') {
+    if (state.mode === 'gameover') { event.preventDefault(); dispatch({ type:'RESTART', now }); }
+    return;
+  }
 
-	31.	HMR safety
+  const dir = KEY_TO_DIR[event.key];
+  if (!dir) return;
+  event.preventDefault();
+  dispatch({ type:'TURN', dir });
+};
+window.addEventListener('keydown', handleKeyDown, { passive:false, signal });
 
-	•	Add import.meta.hot.dispose to remove listeners and cancel RAF.
-	•	Verify: editing files doesn’t duplicate input handlers.
+Verify: arrows move snake only when canvas or body focused; arrows change <select> when selects focused.
+	13.	Pause on UI focus; resume on canvas focus
 
-Phase 11 — Invariants and QA ✅
-	32.	Runtime assertions in dev
+const pauseForUi = () => dispatch({ type:'PAUSE', reason:'ui', now: performance.now() });
+yearSel.addEventListener('focusin', pauseForUi, { signal });
+typeSel.addEventListener('focusin', pauseForUi, { signal });
 
-	•	Fruits unique, snake cells unique, fruitByKey.size === NUM_FRUITS, correctKey exists.
-	•	Verify: no assertions triggered during normal play.
+canvas.addEventListener('focusin', () => dispatch({ type:'RESUME', now: performance.now() }), { signal });
 
-	33.	QA checklist
+Verify: focusing a select pauses; clicking canvas resumes.
 
-	•	Start with 3 lives.
-	•	Wrong fruit: life–1, no pause, count stays NUM_FRUITS.
-	•	Correct fruit: grow by 1, new problem + fruits, pause 5s or key.
-	•	Hitting wall/self: immediate game over.
-	•	Speed and difficulty constant.
-	•	Verify: all pass.
+⸻
 
-Phase 12 — Optional
-	34.	Settings
+6) HUD robustness
+	14.	Truncate long expressions
 
-	•	Expose NUM_FRUITS, TICK_MS, YEAR_LEVEL in a small config object.
-	•	Verify: changing values reflects in-game.
+	•	In view.ts, add helper:
 
-	35.	Sound (optional)
+function ellipsis(ctx:CanvasRenderingContext2D, text:string, max:number){
+  if (ctx.measureText(text).width <= max) return text;
+  let s = text;
+  while (s.length && ctx.measureText(s + '…').width > max) s = s.slice(0, -1);
+  return s + '…';
+}
 
-	•	Add short correct/wrong beeps via AudioContext.
-	•	Verify: plays once per event.
+	•	In drawHud():
 
-This plan keeps the core pure, testable, and small. You can stop after any phase and still have a working build.
+const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
+const maxW = logicalWidth - 140; // leave room for Lives
+const shown = ellipsis(ctx, `Problem: ${expr}`, maxW);
+ctx.textAlign = 'left'; ctx.fillText(shown, 16, hudHeight/2);
+
+Verify: no overflow when problems are long.
+
+⸻
+
+7) Cleanup and HMR
+	15.	AbortController cleanup
+
+	•	Replace previous explicit removes with:
+
+window.addEventListener('beforeunload', () => ac.abort(), { once:true });
+if (import.meta.hot) import.meta.hot.dispose(() => ac.abort());
+
+	•	Keep RAF cancel inside dispose as you already had.
+
+Verify: HMR doesn’t duplicate listeners; no console warnings.
+
+⸻
+
+8) QA passes
+	16.	Manual checks
+
+	•	Canvas has focus on load. Arrows move snake.
+	•	Focus year/type select. Arrows change selection. Game pauses.
+	•	Click canvas. Game resumes and arrows control snake.
+	•	Change year/type. Next generated problem matches.
+	•	State persists after reload via localStorage.
+	•	Game over still restarts with Enter.
+	•	Wrong flash still works.
+
+Done.
