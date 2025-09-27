@@ -9,6 +9,8 @@ import {
   START_LIVES,
   TICK_MS,
 } from './constants';
+import { initState, reduce } from './core';
+import type { GameEvent, State } from './types';
 
 export function init(): void {
   const root = document.querySelector<HTMLDivElement>('#app');
@@ -40,11 +42,80 @@ export function init(): void {
   canvas.width = pixelWidth;
   canvas.height = pixelHeight;
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr, dpr);
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+  const renderBackground = () => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+  };
+
+  let state: State = initState();
+
+  const dispatch = (event: GameEvent) => {
+    state = reduce(state, event);
+  };
+
+  const stepIntervalMs = TICK_MS;
+  const maxStepsPerFrame = 5;
+  const maxAccumulatorMs = stepIntervalMs * maxStepsPerFrame;
+
+  let accumulator = 0;
+  let lastFrameTs = performance.now();
+  let loopLogStart = lastFrameTs;
+  let frameCounter = 0;
+  let tickCounter = 0;
+  let rafId = 0;
+
+  const tick = (now: number) => {
+    dispatch({ type: 'TICK', now });
+    tickCounter += 1;
+  };
+
+  const frame = (now: number) => {
+    const delta = now - lastFrameTs;
+    lastFrameTs = now;
+    accumulator = Math.min(accumulator + delta, maxAccumulatorMs);
+
+    let steps = 0;
+    while (accumulator >= stepIntervalMs && steps < maxStepsPerFrame) {
+      accumulator -= stepIntervalMs;
+      tick(now);
+      steps += 1;
+    }
+
+    if (steps === maxStepsPerFrame && accumulator >= stepIntervalMs) {
+      accumulator = 0;
+    }
+
+    renderBackground();
+
+    frameCounter += 1;
+    if (now - loopLogStart >= 1000) {
+      console.info('snake-maths:loop', {
+        fps: frameCounter,
+        ticks: tickCounter,
+        mode: state.mode,
+      });
+      frameCounter = 0;
+      tickCounter = 0;
+      loopLogStart = now;
+    }
+
+    rafId = requestAnimationFrame(frame);
+  };
+
+  renderBackground();
+  rafId = requestAnimationFrame(frame);
+
+  const teardown = () => {
+    if (rafId !== 0) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  };
+
+  window.addEventListener('beforeunload', teardown);
 
   console.info('snake-maths:init', {
     CELL,

@@ -31,3 +31,9 @@ export type State = {
   resumeAt?: number;
   wrongFlashUntil?: number;
 };
+
+export type GameEvent =
+  | { type: 'TICK'; now: number }
+  | { type: 'TURN'; dir: Dir }
+  | { type: 'RESUME'; now: number }
+  | { type: 'RESTART'; now: number };

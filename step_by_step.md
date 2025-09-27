@@ -29,7 +29,7 @@ Phase 2 — Canvas + DPR ✅
 	•	Handle devicePixelRatio. Scale context. Keep logical width/height from constants.
 	•	Verify: a background fill renders crisp (no blur).
 
-Phase 3 — Loop and FSM shell
+Phase 3 — Loop and FSM shell ✅
 	7.	RAF + fixed timestep
 
 	•	RAF with accumulator. Step at TICK_MS. Cap steps (e.g., 5).
