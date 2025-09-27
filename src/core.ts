@@ -1,4 +1,4 @@
-import { COLS, NUM_FRUITS, ROWS, START_LIVES, WRONG_FLASH_MS } from './constants';
+import { COLS, NUM_FRUITS, ROWS, START_LIVES, TICK_MS, WRONG_FLASH_MS } from './constants';
 import { isCorrect, newProblem, type MathLibProblem } from './math';
 import type { Dir, Fruit, GameEvent, Point, Problem, ProblemConfig, State } from './types';
 
@@ -240,7 +240,7 @@ function randomSeed(): number {
   return (Math.random() * UINT32_MAX) >>> 0;
 }
 
-export function initState(seed?: number, config: ProblemConfig = {}): State {
+export function initState(seed?: number, config: ProblemConfig = {}, tickMs: number = TICK_MS): State {
   const startPos: Point = {
     x: Math.floor(COLS / 2),
     y: Math.floor(ROWS / 2),
@@ -266,13 +266,14 @@ export function initState(seed?: number, config: ProblemConfig = {}): State {
     problem,
     rngSeed,
     config,
+    tickMs,
   });
 }
 
 export function reduce(state: State, event: GameEvent): State {
   switch (event.type) {
     case 'RESTART':
-      return initState(undefined, state.config);
+      return initState(undefined, state.config, state.tickMs);
     case 'TURN': {
       if (state.mode === 'gameover') {
         return state;
@@ -291,6 +292,11 @@ export function reduce(state: State, event: GameEvent): State {
       return validateState({
         ...state,
         config: event.config,
+      });
+    case 'SET_SPEED':
+      return validateState({
+        ...state,
+        tickMs: event.tickMs,
       });
     case 'PAUSE': {
       if (state.mode !== 'running') {

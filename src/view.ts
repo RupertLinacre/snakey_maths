@@ -78,9 +78,10 @@ export async function init(): Promise<void> {
 
   const yearSel = document.getElementById('year') as HTMLSelectElement | null;
   const typeSel = document.getElementById('ptype') as HTMLSelectElement | null;
+  const speedSel = document.getElementById('speed') as HTMLSelectElement | null;
 
-  if (!yearSel || !typeSel) {
-    throw new Error('Cannot initialise game: #year or #ptype control not found');
+  if (!yearSel || !typeSel || !speedSel) {
+    throw new Error('Cannot initialise game: controls not found');
   }
 
   const YEARS = Object.values(YEAR_LEVELS);
@@ -95,37 +96,61 @@ export async function init(): Promise<void> {
     typeSel.add(new Option(value, value));
   }
 
-  const LS_KEY = 'snake-maths:config';
-  const loadCfg = (): State['config'] => {
+  type StoredSettings = {
+    yearLevel?: string;
+    type?: string | null;
+    tickMs?: number;
+  };
+
+  const SPEED_PRESETS = [
+    { label: 'Fast', value: 120 },
+    { label: 'Medium', value: 500 },
+    { label: 'Slow', value: 1000 },
+  ];
+
+  speedSel.replaceChildren(
+    ...SPEED_PRESETS.map(({ label, value }) => new Option(label, String(value))),
+  );
+
+  const LS_KEY = 'snake-maths:settings';
+  const loadSettings = (): StoredSettings => {
     try {
       return JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') ?? {};
     } catch (error) {
-      console.warn('snake-maths:config:load failed', error);
+      console.warn('snake-maths:settings:load failed', error);
       return {};
     }
   };
 
-  const saveCfg = (config: State['config']) => {
+  const saveSettings = (settings: StoredSettings) => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(config));
+      localStorage.setItem(LS_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.warn('snake-maths:config:save failed', error);
+      console.warn('snake-maths:settings:save failed', error);
     }
   };
 
-  const defaultCfg = loadCfg();
-  const defaultYear = defaultCfg.yearLevel && YEARS.includes(defaultCfg.yearLevel)
-    ? defaultCfg.yearLevel
-    : YEARS[2] ?? YEARS[0] ?? '';
-  if (defaultYear) {
-    yearSel.value = defaultYear;
-  }
+  const stored = loadSettings();
 
-  if (defaultCfg.type && TYPES.includes(defaultCfg.type)) {
-    typeSel.value = defaultCfg.type;
+  const defaultYear = stored.yearLevel && YEARS.includes(stored.yearLevel)
+    ? stored.yearLevel
+    : YEARS[2] ?? YEARS[0] ?? '';
+  yearSel.value = defaultYear;
+
+  if (stored.type && TYPES.includes(stored.type)) {
+    typeSel.value = stored.type;
   } else {
     typeSel.value = '';
   }
+
+  const defaultTick = (() => {
+    const candidates = SPEED_PRESETS.map((preset) => preset.value);
+    if (stored.tickMs && candidates.includes(stored.tickMs)) {
+      return stored.tickMs;
+    }
+    return candidates.includes(TICK_MS) ? TICK_MS : SPEED_PRESETS[0].value;
+  })();
+  speedSel.value = String(defaultTick);
 
   const hudHeight = HUD_HEIGHT;
   const gridOffsetY = hudHeight;
@@ -205,75 +230,46 @@ export async function init(): Promise<void> {
       );
     };
 
+    const dirFromDelta = (dx: number, dy: number): { x: number; y: number } => ({ x: Math.sign(dx), y: Math.sign(dy) });
+
     for (let i = 1; i < segments.length; i += 1) {
       const segment = segments[i];
       const prev = segments[i - 1];
       const next = segments[i + 1] ?? prev;
 
-      const dxPrev = prev.x - segment.x;
-      const dyPrev = prev.y - segment.y;
-      const dxNext = next.x - segment.x;
-      const dyNext = next.y - segment.y;
+      const inVec = dirFromDelta(segment.x - prev.x, segment.y - prev.y);
+      const outVec = dirFromDelta(next.x - segment.x, next.y - segment.y);
 
       const center = getCenter(segment);
 
-      const isStraightVertical = dxPrev === 0 && dxNext === 0;
-      const isStraightHorizontal = dyPrev === 0 && dyNext === 0;
+      const isStraightVertical = inVec.x === 0 && outVec.x === 0;
+      const isStraightHorizontal = inVec.y === 0 && outVec.y === 0;
 
       if (isStraightVertical) {
-        const rotation = dyPrev < 0 ? 0 : Math.PI;
+        const rotation = inVec.y < 0 ? 0 : Math.PI;
         drawSprite(bodySprite, center.x, center.y, rotation);
         continue;
       }
 
       if (isStraightHorizontal) {
-        const rotation = dxPrev < 0 ? Math.PI / 2 : -Math.PI / 2;
+        const rotation = inVec.x < 0 ? Math.PI / 2 : -Math.PI / 2;
         drawSprite(bodySprite, center.x, center.y, rotation);
         continue;
       }
 
-      const cornerRotation = (() => {
-        if (dxPrev === 0 && dyPrev === 1) {
-          if (dxNext === 1 && dyNext === 0) {
-            return 0;
-          }
-          if (dxNext === -1 && dyNext === 0) {
-            return Math.PI / 2;
-          }
-        }
-
-        if (dxPrev === 0 && dyPrev === -1) {
-          if (dxNext === 1 && dyNext === 0) {
-            return (3 * Math.PI) / 2;
-          }
-          if (dxNext === -1 && dyNext === 0) {
-            return Math.PI;
-          }
-        }
-
-        if (dxPrev === 1 && dyPrev === 0) {
-          if (dxNext === 0 && dyNext === -1) {
-            return Math.PI;
-          }
-          if (dxNext === 0 && dyNext === 1) {
-            return (3 * Math.PI) / 2;
-          }
-        }
-
-        if (dxPrev === -1 && dyPrev === 0) {
-          if (dxNext === 0 && dyNext === -1) {
-            return Math.PI / 2;
-          }
-          if (dxNext === 0 && dyNext === 1) {
-            return 0;
-          }
-        }
-
-        return null;
+      const angle = (() => {
+        const computed = Math.atan2(inVec.y, inVec.x) + Math.PI / 2;
+        const normalized = ((computed % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        return normalized;
       })();
 
-      if (cornerRotation !== null) {
-        drawSprite(cornerSprite, center.x, center.y, cornerRotation);
+      const rotatedOut = {
+        x: Math.round(Math.cos(angle)),
+        y: Math.round(Math.sin(angle)),
+      };
+
+      if (rotatedOut.x === outVec.x && rotatedOut.y === outVec.y) {
+        drawSprite(cornerSprite, center.x, center.y, angle);
       } else {
         fallbackDraw(segment);
       }
@@ -379,33 +375,58 @@ export async function init(): Promise<void> {
     drawOverlay();
   };
 
+  const getSettings = (): StoredSettings => ({
+    yearLevel: yearSel.value || undefined,
+    type: typeSel.value || null,
+    tickMs: Number(speedSel.value || defaultTick),
+  });
+
+  const initialSettings = getSettings();
+  saveSettings(initialSettings);
+
   const currentConfig = (): State['config'] => ({
     yearLevel: yearSel.value || undefined,
     type: typeSel.value || null,
   });
 
-  saveCfg(currentConfig());
+  const getTickMs = () => Number(speedSel.value || defaultTick);
 
-  let state: State = initState(undefined, currentConfig());
+  let state: State = initState(undefined, currentConfig(), getTickMs());
+
+  const maxStepsPerFrame = 5;
+  let stepIntervalMs = state.tickMs;
+  let maxAccumulatorMs = stepIntervalMs * maxStepsPerFrame;
+
+  const updateTiming = () => {
+    stepIntervalMs = state.tickMs;
+    maxAccumulatorMs = stepIntervalMs * maxStepsPerFrame;
+  };
 
   const dispatch = (event: GameEvent) => {
     state = reduce(state, event);
+    updateTiming();
   };
 
   const applyConfig = () => {
-    const cfg = currentConfig();
-    saveCfg(cfg);
     const now = performance.now();
+    const cfg = currentConfig();
+    const settings = getSettings();
+    saveSettings(settings);
     dispatch({ type: 'SET_CONFIG', config: cfg, now });
+    dispatch({ type: 'RESTART', now });
+  };
+
+  const applySpeed = () => {
+    const now = performance.now();
+    const settings = getSettings();
+    saveSettings(settings);
+    dispatch({ type: 'SET_SPEED', tickMs: settings.tickMs ?? state.tickMs, now });
     dispatch({ type: 'RESTART', now });
   };
 
   yearSel.addEventListener('change', applyConfig, { signal });
   typeSel.addEventListener('change', applyConfig, { signal });
-
-  const stepIntervalMs = TICK_MS;
-  const maxStepsPerFrame = 5;
-  const maxAccumulatorMs = stepIntervalMs * maxStepsPerFrame;
+  speedSel.addEventListener('change', applySpeed, { signal });
 
   let accumulator = 0;
   let lastFrameTs = performance.now();
@@ -555,7 +576,7 @@ export async function init(): Promise<void> {
     ROWS,
     CANVAS_WIDTH,
     CANVAS_HEIGHT,
-    TICK_MS,
+    tickMs: state.tickMs,
     NUM_FRUITS,
     START_LIVES,
     HUD_HEIGHT,

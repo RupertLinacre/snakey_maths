@@ -42,6 +42,7 @@ export type State = {
   resumeAt?: number;
   wrongFlashUntil?: number;
   config: ProblemConfig;
+  tickMs: number;
 };
 
 export type GameEvent =
@@ -50,4 +51,5 @@ export type GameEvent =
   | { type: 'RESUME'; now: number }
   | { type: 'RESTART'; now: number }
   | { type: 'SET_CONFIG'; config: ProblemConfig; now: number }
+  | { type: 'SET_SPEED'; tickMs: number; now: number }
   | { type: 'PAUSE'; reason?: 'ui' | 'correct'; now: number };
