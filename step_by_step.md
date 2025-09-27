@@ -173,7 +173,7 @@ export { YEAR_LEVELS, PROBLEM_TYPES };
 	•	Draw problem.expression in reserved HUD.
 	•	Verify: matches the correct fruit value.
 
-Phase 10 — UX polish and HMR
+Phase 10 — UX polish and HMR ✅
 	29.	Visual feedback
 
 	•	Wrong flash (red tint for 200–300 ms). Correct overlay with “Next in 5s or press any key”.
@@ -189,7 +189,7 @@ Phase 10 — UX polish and HMR
 	•	Add import.meta.hot.dispose to remove listeners and cancel RAF.
 	•	Verify: editing files doesn’t duplicate input handlers.
 
-Phase 11 — Invariants and QA
+Phase 11 — Invariants and QA ✅
 	32.	Runtime assertions in dev
 
 	•	Fruits unique, snake cells unique, fruitByKey.size === NUM_FRUITS, correctKey exists.

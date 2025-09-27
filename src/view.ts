@@ -103,18 +103,18 @@ export function init(): void {
     const radius = CELL / 2 - 4;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 16px "Fira Code", monospace';
+    ctx.font = 'bold 20px "Fira Code", monospace';
 
     for (const fruit of state.fruitByKey.values()) {
       const centerX = fruit.pos.x * CELL + CELL / 2;
       const centerY = gridOffsetY + fruit.pos.y * CELL + CELL / 2;
 
       ctx.beginPath();
-      ctx.fillStyle = '#f39c12';
+      ctx.fillStyle = '#560197ff';
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#111';
+      ctx.fillStyle = '#ffffffff';
       ctx.fillText(fruit.label, centerX, centerY + 1);
     }
   };
@@ -134,7 +134,7 @@ export function init(): void {
     ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
   };
 
-  const drawOverlay = () => {
+  const drawOverlay = (now: number) => {
     if (state.mode === 'paused') {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fillRect(0, gridOffsetY, logicalWidth, logicalHeight - gridOffsetY);
@@ -143,9 +143,12 @@ export function init(): void {
       ctx.font = '20px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const pauseSeconds = Math.round(PAUSE_MS_AFTER_CORRECT / 1000);
+      const remainingMs = state.resumeAt ? Math.max(0, state.resumeAt - now) : 0;
+      const pauseSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
       ctx.fillText(
-        `Correct! Next round in ${pauseSeconds}s — press any key to resume`,
+        pauseSeconds > 0
+          ? `Correct! Next round in ${pauseSeconds}s — press any key to resume`
+          : 'Correct! Press any key to resume',
         logicalWidth / 2,
         gridOffsetY + (logicalHeight - gridOffsetY) / 2,
       );
@@ -163,7 +166,11 @@ export function init(): void {
     ctx.font = '24px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Game Over', logicalWidth / 2, gridOffsetY + (logicalHeight - gridOffsetY) / 2);
+    ctx.fillText(
+      'Game Over — Press Enter to restart',
+      logicalWidth / 2,
+      gridOffsetY + (logicalHeight - gridOffsetY) / 2,
+    );
   };
 
   const render = (now: number) => {
@@ -173,7 +180,7 @@ export function init(): void {
     drawSnake();
     drawFruits();
     drawWrongFlash(now);
-    drawOverlay();
+    drawOverlay(now);
   };
 
   let state: State = initState();
@@ -242,12 +249,21 @@ export function init(): void {
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    const dir = KEY_TO_DIR[event.key];
     const now = performance.now();
 
     if (state.mode === 'paused') {
       dispatch({ type: 'RESUME', now });
     }
+
+    if (event.key === 'Enter') {
+      if (state.mode === 'gameover') {
+        event.preventDefault();
+        dispatch({ type: 'RESTART', now });
+      }
+      return;
+    }
+
+    const dir = KEY_TO_DIR[event.key];
 
     if (!dir) {
       return;
@@ -271,6 +287,12 @@ export function init(): void {
 
   window.addEventListener('beforeunload', teardown);
 
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      teardown();
+    });
+  }
+
   console.info('snake-maths:init', {
     CELL,
     COLS,
@@ -285,4 +307,14 @@ export function init(): void {
     WRONG_FLASH_MS,
     dpr,
   });
+
+  if (import.meta.env.DEV) {
+    console.info('snake-maths:qa-checklist', [
+      'Start with 3 lives',
+      'Eating correct fruit grows snake, pauses 5s, new problem appears',
+      'Eating wrong fruit flashes red, life -1, fruits stay at NUM_FRUITS',
+      'Hit wall or self → immediate game over',
+      'Press Enter on Game Over to restart',
+    ]);
+  }
 }

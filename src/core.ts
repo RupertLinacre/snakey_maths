@@ -71,6 +71,41 @@ function toLibProblem(problem: Problem): MathLibProblem {
   };
 }
 
+function assertDev(condition: unknown, message: string): asserts condition {
+  if (import.meta.env.DEV && !condition) {
+    throw new Error(`[dev] ${message}`);
+  }
+}
+
+function validateState(state: State): State {
+  if (!import.meta.env.DEV) {
+    return state;
+  }
+
+  const snakeKeys = state.snake.map(pointKey);
+  assertDev(snakeKeys.length === state.snakeSet.size, 'snakeSet size mismatch');
+  assertDev(new Set(snakeKeys).size === snakeKeys.length, 'duplicate snake segments');
+  for (const key of snakeKeys) {
+    assertDev(state.snakeSet.has(key), `snakeSet missing ${key}`);
+  }
+
+  if (state.fruitByKey.size > 0) {
+    assertDev(state.fruitByKey.size === NUM_FRUITS, `expected ${NUM_FRUITS} fruits, got ${state.fruitByKey.size}`);
+    assertDev(typeof state.correctKey === 'string', 'correctKey missing');
+    if (state.correctKey) {
+      assertDev(state.fruitByKey.has(state.correctKey), 'correctKey not found in fruitByKey');
+      const correctFruit = state.fruitByKey.get(state.correctKey);
+      assertDev(correctFruit?.correct === true, 'correct fruit not flagged');
+    }
+  }
+
+  for (const key of state.fruitByKey.keys()) {
+    assertDev(!state.snakeSet.has(key), `fruit overlaps snake at ${key}`);
+  }
+
+  return state;
+}
+
 function makeDistractors(
   answer: number,
   count: number,
@@ -226,7 +261,7 @@ export function initState(seed?: number): State {
   const fruitResult = spawnFruitSet(snakeSet, rngSeed, problem);
   rngSeed = fruitResult.seed;
 
-  return {
+  return validateState({
     mode: 'running',
     lives: START_LIVES,
     snake,
@@ -237,7 +272,7 @@ export function initState(seed?: number): State {
     correctKey: fruitResult.correctKey,
     problem,
     rngSeed,
-  };
+  });
 }
 
 export function reduce(state: State, event: GameEvent): State {
@@ -255,29 +290,29 @@ export function reduce(state: State, event: GameEvent): State {
       if (prevDir === event.dir || isOpposite(prevDir, event.dir)) {
         return state;
       }
-      return {
+      return validateState({
         ...state,
         dirQueue: [...state.dirQueue, event.dir],
-      };
+      });
     }
     case 'RESUME': {
       if (state.mode !== 'paused') {
         return state;
       }
-      return {
+      return validateState({
         ...state,
         mode: 'running',
         resumeAt: undefined,
-      };
+      });
     }
     case 'TICK': {
       if (state.mode === 'paused') {
         if (state.resumeAt !== undefined && event.now >= state.resumeAt) {
-          return {
+          return validateState({
             ...state,
             mode: 'running',
             resumeAt: undefined,
-          };
+          });
         }
         return state;
       }
@@ -305,13 +340,13 @@ export function reduce(state: State, event: GameEvent): State {
       };
 
       if (isOutOfBounds(nextHead)) {
-        return {
+        return validateState({
           ...state,
           mode: 'gameover',
           dir: nextDir,
           dirQueue: [],
           resumeAt: undefined,
-        };
+        });
       }
 
       const nextHeadKey = pointKey(nextHead);
@@ -320,13 +355,13 @@ export function reduce(state: State, event: GameEvent): State {
       const steppingIntoTail = state.snake.length > 1 && nextHeadKey === tailKey;
 
       if (state.snakeSet.has(nextHeadKey) && !steppingIntoTail) {
-        return {
+        return validateState({
           ...state,
           mode: 'gameover',
           dir: nextDir,
           dirQueue: [],
           resumeAt: undefined,
-        };
+        });
       }
 
       let rngSeed = state.rngSeed;
@@ -387,7 +422,7 @@ export function reduce(state: State, event: GameEvent): State {
         }
       }
 
-      return {
+      return validateState({
         ...state,
         mode,
         dir: nextDir,
@@ -401,7 +436,7 @@ export function reduce(state: State, event: GameEvent): State {
         lives,
         resumeAt,
         wrongFlashUntil,
-      };
+      });
     }
     default:
       return state;
