@@ -1,18 +1,6 @@
-Here’s the updated build plan. Small steps. Each one is verifiable.
 
-Phase 0 — Scaffold
-	1.	Init project
 
-	•	Run: npm create vite@latest snake-math -- --template vanilla-ts && cd snake-math && npm i
-	•	Verify: npm run dev serves a blank page.
-
-	2.	Add test runner
-
-	•	Run: npm i -D vitest @types/node
-	•	Add "test": "vitest" to package.json.
-	•	Verify: npm test runs zero tests.
-
-Phase 1 — Files and contracts
+Phase 1 — Files and contracts ✅
 	3.	Create minimal files
 
 	•	src/constants.ts, src/types.ts, src/core.ts, src/view.ts

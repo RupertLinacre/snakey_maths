@@ -1,0 +1,12 @@
+export const CELL = 24;
+export const COLS = 24;
+export const ROWS = 24;
+
+export const CANVAS_WIDTH = COLS * CELL;
+export const CANVAS_HEIGHT = ROWS * CELL;
+
+export const TICK_MS = 120;
+export const PAUSE_MS_AFTER_CORRECT = 5000;
+
+export const NUM_FRUITS = 4;
+export const START_LIVES = 3;
