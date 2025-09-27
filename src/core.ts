@@ -274,7 +274,7 @@ export function reduce(state: State, event: GameEvent): State {
     case 'RESTART':
       return initState(undefined, state.config);
     case 'TURN': {
-      if (state.mode !== 'running') {
+      if (state.mode === 'gameover') {
         return state;
       }
       const prevDir = state.dirQueue[state.dirQueue.length - 1] ?? state.dir;

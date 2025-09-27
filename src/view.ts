@@ -272,7 +272,9 @@ export function init(): void {
   const applyConfig = () => {
     const cfg = currentConfig();
     saveCfg(cfg);
-    dispatch({ type: 'SET_CONFIG', config: cfg, now: performance.now() });
+    const now = performance.now();
+    dispatch({ type: 'SET_CONFIG', config: cfg, now });
+    dispatch({ type: 'RESTART', now });
   };
 
   yearSel.addEventListener('change', applyConfig, { signal });
@@ -364,6 +366,15 @@ export function init(): void {
     const now = performance.now();
 
     if (state.mode === 'paused') {
+      const dir = KEY_TO_DIR[event.key];
+
+      if (dir) {
+        event.preventDefault();
+        dispatch({ type: 'TURN', dir });
+        dispatch({ type: 'RESUME', now });
+        return;
+      }
+
       dispatch({ type: 'RESUME', now });
       return;
     }
