@@ -149,7 +149,7 @@ Phase 8 — Eating and lives ✅
 	•	Wrong eat decrements lives and continues.
 	•	Verify: all green.
 
-Phase 9 — Maths library integration
+Phase 9 — Maths library integration ✅
 	26.	Adapter
 
 	•	src/math.ts:

@@ -115,7 +115,7 @@ export function init(): void {
       ctx.fill();
 
       ctx.fillStyle = '#111';
-      ctx.fillText(String(fruit.value), centerX, centerY + 1);
+      ctx.fillText(fruit.label, centerX, centerY + 1);
     }
   };
 
@@ -143,8 +143,9 @@ export function init(): void {
       ctx.font = '20px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      const pauseSeconds = Math.round(PAUSE_MS_AFTER_CORRECT / 1000);
       ctx.fillText(
-        'Correct! Next round in 5s — press any key to resume',
+        `Correct! Next round in ${pauseSeconds}s — press any key to resume`,
         logicalWidth / 2,
         gridOffsetY + (logicalHeight - gridOffsetY) / 2,
       );

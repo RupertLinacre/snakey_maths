@@ -10,12 +10,17 @@ export type GameMode = 'running' | 'paused' | 'gameover';
 export type Fruit = {
   pos: Point;
   value: number;
+  label: string;
   correct: boolean;
 };
 
 export type Problem = {
   expression: string;
   answer: number;
+  expressionShort?: string;
+  formattedAnswer?: string;
+  type?: string;
+  yearLevel?: string;
 };
 
 export type State = {

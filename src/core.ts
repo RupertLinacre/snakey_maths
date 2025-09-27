@@ -6,6 +6,7 @@ import {
   START_LIVES,
   WRONG_FLASH_MS,
 } from './constants';
+import { isCorrect, newProblem, type MathLibProblem } from './math';
 import type { Dir, Fruit, GameEvent, Point, Problem, State } from './types';
 
 const START_DIR: Dir = 'right';
@@ -48,16 +49,26 @@ function randomInt(seed: number, min: number, max: number): { seed: number; valu
   return { seed: nextSeed, value: result };
 }
 
-function generateStubProblem(seed: number): { seed: number; problem: Problem } {
-  const first = randomInt(seed, 2, 13);
-  const second = randomInt(first.seed, 2, 13);
-  const a = first.value;
-  const b = second.value;
-  const problem: Problem = {
-    expression: `${a} + ${b}`,
-    answer: a + b,
+function normaliseProblem(raw: MathLibProblem): Problem {
+  return {
+    expression: raw.expression,
+    expressionShort: raw.expression_short,
+    answer: raw.answer,
+    formattedAnswer: raw.formattedAnswer,
+    type: raw.type,
+    yearLevel: raw.yearLevel,
   };
-  return { seed: second.seed, problem };
+}
+
+function toLibProblem(problem: Problem): MathLibProblem {
+  return {
+    expression: problem.expression,
+    expression_short: problem.expressionShort,
+    answer: problem.answer,
+    formattedAnswer: problem.formattedAnswer,
+    type: problem.type,
+    yearLevel: problem.yearLevel,
+  };
 }
 
 function makeDistractors(
@@ -141,6 +152,7 @@ function spawnFruitSet(
       fruitByKey.set(key, {
         pos,
         value: problem.answer,
+        label: problem.formattedAnswer ?? String(problem.answer),
         correct: true,
       });
     } else {
@@ -149,6 +161,7 @@ function spawnFruitSet(
       fruitByKey.set(key, {
         pos,
         value,
+        label: String(value),
         correct: false,
       });
     }
@@ -184,6 +197,7 @@ function spawnAdditionalWrongFruit(
   fruitByKey.set(pointKey(picked.point), {
     pos: picked.point,
     value,
+    label: String(value),
     correct: false,
   });
 
@@ -208,9 +222,8 @@ export function initState(seed?: number): State {
   const snakeSet = new Set<string>([pointKey(startPos)]);
 
   let rngSeed = typeof seed === 'number' ? seed >>> 0 : randomSeed();
-  const problemResult = generateStubProblem(rngSeed);
-  rngSeed = problemResult.seed;
-  const fruitResult = spawnFruitSet(snakeSet, rngSeed, problemResult.problem);
+  const problem = normaliseProblem(newProblem());
+  const fruitResult = spawnFruitSet(snakeSet, rngSeed, problem);
   rngSeed = fruitResult.seed;
 
   return {
@@ -222,7 +235,7 @@ export function initState(seed?: number): State {
     dirQueue: [],
     fruitByKey: fruitResult.fruitByKey,
     correctKey: fruitResult.correctKey,
-    problem: problemResult.problem,
+    problem,
     rngSeed,
   };
 }
@@ -316,8 +329,19 @@ export function reduce(state: State, event: GameEvent): State {
         };
       }
 
+      let rngSeed = state.rngSeed;
+      let fruitByKey = state.fruitByKey;
+      let correctKey = state.correctKey;
+      let problem = state.problem;
+      let lives = state.lives;
+      let mode: State['mode'] = 'running';
+      let resumeAt = state.resumeAt;
+      let wrongFlashUntil = state.wrongFlashUntil;
+
       const fruit = state.fruitByKey.get(nextHeadKey);
-      const willGrow = Boolean(fruit?.correct);
+      const libProblem = problem ? toLibProblem(problem) : undefined;
+      const isCorrectFruit = fruit && libProblem ? isCorrect(libProblem, fruit.value) : Boolean(fruit?.correct);
+      const willGrow = Boolean(isCorrectFruit);
 
       const nextSnakeSet = new Set<string>(state.snakeSet);
       const nextSnake: Point[] = willGrow
@@ -331,27 +355,18 @@ export function reduce(state: State, event: GameEvent): State {
         nextSnakeSet.add(nextHeadKey);
       }
 
-      let rngSeed = state.rngSeed;
-      let fruitByKey = state.fruitByKey;
-      let correctKey = state.correctKey;
-      let problem = state.problem;
-      let lives = state.lives;
-      let mode: State['mode'] = 'running';
-      let resumeAt = state.resumeAt;
-      let wrongFlashUntil = state.wrongFlashUntil;
-
       if (fruit) {
-        if (fruit.correct) {
-          const problemResult = generateStubProblem(rngSeed);
-          rngSeed = problemResult.seed;
-          problem = problemResult.problem;
-          const spawnResult = spawnFruitSet(nextSnakeSet, rngSeed, problem);
+        if (isCorrectFruit) {
+          const nextProblem = normaliseProblem(newProblem());
+          problem = nextProblem;
+          const spawnResult = spawnFruitSet(nextSnakeSet, rngSeed, nextProblem);
           rngSeed = spawnResult.seed;
           fruitByKey = spawnResult.fruitByKey;
           correctKey = spawnResult.correctKey;
           mode = 'paused';
           resumeAt = event.now + PAUSE_MS_AFTER_CORRECT;
           nextQueue = [];
+          wrongFlashUntil = undefined;
         } else {
           lives = Math.max(0, lives - 1);
           wrongFlashUntil = event.now + WRONG_FLASH_MS;
