@@ -22,7 +22,7 @@ Phase 1 — Files and contracts ✅
 	•	State { mode, lives, snake:Point[], snakeSet:Set<string>, dir, dirQueue:Dir[], fruitByKey:Map<string,Fruit>, correctKey?:string, problem?:Problem, resumeAt?:number, wrongFlashUntil?:number }
 	•	Verify: type-check passes.
 
-Phase 2 — Canvas + DPR
+Phase 2 — Canvas + DPR ✅
 	6.	Canvas setup in view.ts
 
 	•	Create <canvas id="game"> in index.html.
