@@ -7,7 +7,6 @@ import {
   NUM_FRUITS,
   ROWS,
   START_LIVES,
-  TICK_MS,
   WALL_COLOR,
   WRONG_FLASH_MS,
 } from './constants';
@@ -208,7 +207,7 @@ export async function init(): Promise<void> {
     if (stored.tickMs && candidates.includes(stored.tickMs)) {
       return stored.tickMs;
     }
-    return candidates.includes(TICK_MS) ? TICK_MS : SPEED_PRESETS[0].value;
+    return SPEED_PRESETS[0].value;
   })();
   speedSel.value = String(defaultTick);
 
