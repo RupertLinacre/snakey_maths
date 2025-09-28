@@ -1,4 +1,13 @@
-import { COLS, NUM_FRUITS, ROWS, START_LIVES, TICK_MS, WRONG_FLASH_MS } from './constants';
+import {
+  NUM_FRUITS,
+  PLAY_MAX_X,
+  PLAY_MAX_Y,
+  PLAY_MIN_X,
+  PLAY_MIN_Y,
+  START_LIVES,
+  TICK_MS,
+  WRONG_FLASH_MS,
+} from './constants';
 import { isCorrect, newProblem, type MathLibProblem } from './math';
 import type {
   Dir,
@@ -31,7 +40,12 @@ function isOpposite(a: Dir, b: Dir): boolean {
 }
 
 function isOutOfBounds(point: Point): boolean {
-  return point.x < 0 || point.x >= COLS || point.y < 0 || point.y >= ROWS;
+  return (
+    point.x < PLAY_MIN_X ||
+    point.x > PLAY_MAX_X ||
+    point.y < PLAY_MIN_Y ||
+    point.y > PLAY_MAX_Y
+  );
 }
 
 function nextRandom(seed: number): { seed: number; value: number } {
@@ -138,21 +152,22 @@ function makeDistractors(
 }
 
 function pickEmptyCell(seed: number, occupied: Set<string>): { seed: number; point: Point } {
-  const totalCells = COLS * ROWS;
-  if (occupied.size >= totalCells) {
+  const playWidth = PLAY_MAX_X - PLAY_MIN_X + 1;
+  const playHeight = PLAY_MAX_Y - PLAY_MIN_Y + 1;
+  if (occupied.size >= playWidth * playHeight) {
     throw new Error('No empty cells available for fruit placement');
   }
 
   let nextSeed = seed;
   for (;;) {
-    const roll = randomInt(nextSeed, 0, totalCells);
-    nextSeed = roll.seed;
-    const index = roll.value;
-    const x = index % COLS;
-    const y = Math.floor(index / COLS);
-    const key = `${x},${y}`;
+    const rollX = randomInt(nextSeed, PLAY_MIN_X, PLAY_MAX_X + 1);
+    nextSeed = rollX.seed;
+    const rollY = randomInt(nextSeed, PLAY_MIN_Y, PLAY_MAX_Y + 1);
+    nextSeed = rollY.seed;
+    const point = { x: rollX.value, y: rollY.value };
+    const key = pointKey(point);
     if (!occupied.has(key)) {
-      return { seed: nextSeed, point: { x, y } };
+      return { seed: nextSeed, point };
     }
   }
 }
@@ -256,8 +271,8 @@ export function initState(
   options?: { paused?: boolean; lives?: number; pauseReason?: PauseReason },
 ): State {
   const startPos: Point = {
-    x: Math.floor(COLS / 2),
-    y: Math.floor(ROWS / 2),
+    x: Math.floor((PLAY_MIN_X + PLAY_MAX_X) / 2),
+    y: Math.floor((PLAY_MIN_Y + PLAY_MAX_Y) / 2),
   };
 
   const snake: Point[] = [startPos];
@@ -388,6 +403,7 @@ export function reduce(state: State, event: GameEvent): State {
           lives: remainingLives,
           pauseReason: 'wall',
           resumeAt: undefined,
+          wrongFlashUntil: undefined,
         });
       }
 

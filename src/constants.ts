@@ -1,10 +1,20 @@
 export const CELL = 24;
-export const COLS = 24;
-export const ROWS = 24;
+export const TILE = CELL;
 
-export const CANVAS_WIDTH = COLS * CELL;
-export const HUD_HEIGHT = CELL;
-export const CANVAS_HEIGHT = ROWS * CELL + HUD_HEIGHT;
+export const COLS = 24;
+export const ROWS = 18;
+export const BORDER = 1;
+
+export const PLAY_MIN_X = BORDER;
+export const PLAY_MIN_Y = BORDER;
+export const PLAY_MAX_X = COLS - 1 - BORDER;
+export const PLAY_MAX_Y = ROWS - 1 - BORDER;
+
+export const CANVAS_WIDTH = COLS * TILE;
+export const HUD_HEIGHT = TILE;
+export const CANVAS_HEIGHT = ROWS * TILE + HUD_HEIGHT;
+
+export const WALL_COLOR = '#1e90ff';
 
 export const TICK_MS = 1000;
 export const PAUSE_MS_AFTER_CORRECT = 5000;

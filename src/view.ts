@@ -5,9 +5,11 @@ import {
   COLS,
   HUD_HEIGHT,
   NUM_FRUITS,
+  BORDER,
   ROWS,
   START_LIVES,
   TICK_MS,
+  WALL_COLOR,
   WRONG_FLASH_MS,
 } from './constants';
 import { YEAR_LEVELS, PROBLEM_TYPES } from './math';
@@ -205,6 +207,23 @@ export async function init(): Promise<void> {
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
   };
 
+  const drawWalls = () => {
+    ctx.fillStyle = WALL_COLOR;
+
+    // Top and bottom borders
+    for (let x = 0; x < COLS; x += 1) {
+      ctx.fillRect(x * CELL, gridOffsetY, CELL, CELL);
+      ctx.fillRect(x * CELL, gridOffsetY + (ROWS - 1) * CELL, CELL, CELL);
+    }
+
+    // Left and right borders
+    for (let y = 1; y < ROWS - 1; y += 1) {
+      const yPos = gridOffsetY + y * CELL;
+      ctx.fillRect(0, yPos, CELL, CELL);
+      ctx.fillRect((COLS - 1) * CELL, yPos, CELL, CELL);
+    }
+  };
+
   const ellipsis = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string => {
     if (context.measureText(text).width <= maxWidth) {
       return text;
@@ -226,14 +245,17 @@ export async function init(): Promise<void> {
     ctx.font = '16px "Fira Code", monospace';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
-    const label = `Problem: ${expr}`;
-    const maxLabelWidth = logicalWidth - 140;
-    const displayed = ellipsis(ctx, label, maxLabelWidth);
-    ctx.fillText(displayed, 16, hudHeight / 2);
+    ctx.fillText(`Lives: ${state.lives}`, 16, hudHeight / 2);
 
-    ctx.textAlign = 'right';
-    ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
+    const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
+    ctx.font = '18px "Fira Code", monospace';
+    const label = `Problem: ${expr}`;
+    const maxLabelWidth = (COLS - BORDER * 2) * CELL - CELL;
+    const displayed = ellipsis(ctx, label, maxLabelWidth);
+    const problemX = (BORDER + 0.5) * CELL;
+    const problemY = gridOffsetY + (ROWS - 1) * CELL + CELL / 2;
+    ctx.textAlign = 'left';
+    ctx.fillText(displayed, problemX, problemY);
   };
 
   const drawSnake = () => {
@@ -414,6 +436,7 @@ export async function init(): Promise<void> {
     prepareContext();
     drawBackground();
     drawHud();
+    drawWalls();
     drawSnake();
     drawFruits();
     drawWrongFlash(now);
@@ -492,8 +515,7 @@ export async function init(): Promise<void> {
         return;
       }
 
-      ensureRunning()
-        .then(() => startMusic())
+      startMusic()
         .then(() => {
           musicEnabled = true;
           updateMusicToggle();
