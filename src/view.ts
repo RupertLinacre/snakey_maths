@@ -5,7 +5,6 @@ import {
   COLS,
   HUD_HEIGHT,
   NUM_FRUITS,
-  BORDER,
   ROWS,
   START_LIVES,
   TICK_MS,
@@ -244,18 +243,17 @@ export async function init(): Promise<void> {
     ctx.fillStyle = '#f2f2f2';
     ctx.font = '16px "Fira Code", monospace';
     ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Lives: ${state.lives}`, 16, hudHeight / 2);
 
     const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
-    ctx.font = '18px "Fira Code", monospace';
     const label = `Problem: ${expr}`;
-    const maxLabelWidth = (COLS - BORDER * 2) * CELL - CELL;
+    const maxLabelWidth = logicalWidth - 200;
     const displayed = ellipsis(ctx, label, maxLabelWidth);
-    const problemX = (BORDER + 0.5) * CELL;
-    const problemY = gridOffsetY + (ROWS - 1) * CELL + CELL / 2;
+
     ctx.textAlign = 'left';
-    ctx.fillText(displayed, problemX, problemY);
+    ctx.fillText(displayed, 16, hudHeight / 2);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
   };
 
   const drawSnake = () => {
