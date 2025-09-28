@@ -67,31 +67,36 @@ body {
   text-transform: uppercase;
 }
 
+#controls .icon-label {
+  align-items: center;
+}
+
 #controls button {
   align-self: center;
-  padding: 0.55rem 1.4rem;
-  border-radius: 999px;
-  border: none;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-weight: 600;
-  background: linear-gradient(145deg, rgba(56, 189, 248, 0.8), rgba(99, 102, 241, 0.85));
-  color: #0c0926;
+  width: 48px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(125, 99, 255, 0.55);
+  background: linear-gradient(145deg, rgba(246, 247, 255, 0.95), rgba(229, 233, 255, 0.95));
+  color: #1b1d2b;
   cursor: pointer;
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(56, 189, 248, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
 
 #controls button:hover {
   transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.45);
+  filter: brightness(1.03);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
 }
 
 #controls button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35), 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35), 0 14px 28px rgba(0, 0, 0, 0.45);
 }
 
 #controls select {
@@ -99,10 +104,15 @@ body {
   padding: 0.45rem 0.9rem;
   border-radius: 10px;
   border: 1px solid rgba(125, 99, 255, 0.55);
-  background: linear-gradient(145deg, rgba(34, 32, 58, 0.95), rgba(24, 27, 52, 0.95));
-  color: #f8f7ff;
+  background: linear-gradient(145deg, rgba(246, 247, 255, 0.95), rgba(229, 233, 255, 0.95));
+  color: #1b1d2b;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+#controls select option {
+  color: #1b1d2b;
+  background: rgba(246, 247, 255, 0.95);
 }
 
 #controls select:hover {

@@ -103,8 +103,20 @@ export async function init(): Promise<void> {
     throw new Error('Cannot initialise game: controls not found');
   }
 
+  const formatLabel = (value: string) =>
+    value
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b(year)(\d)/i, (_, y, n) => `${y.charAt(0).toUpperCase() + y.slice(1).toLowerCase()} ${n}`)
+      .replace(/\b(reception)\b/i, 'Reception')
+      .replace(/\baddition\b/i, 'Addition')
+      .replace(/\bsubtraction\b/i, 'Subtraction')
+      .replace(/\bmultiplication\b/i, 'Multiplication')
+      .replace(/\bdivision\b/i, 'Division')
+      .replace(/\bsquared\b/i, 'Squared')
+      .replace(/\b(\w)(\w*)/g, (_, first, rest) => `${first.toUpperCase()}${rest.toLowerCase()}`);
+
   const YEARS = Object.values(YEAR_LEVELS);
-  const yearOptions = YEARS.map((value) => new Option(value, value));
+  const yearOptions = YEARS.map((value) => new Option(formatLabel(value), value));
   yearSel.replaceChildren(...yearOptions);
 
   const TYPES = Object.values(PROBLEM_TYPES);
@@ -112,7 +124,7 @@ export async function init(): Promise<void> {
     typeSel.remove(1);
   }
   for (const value of TYPES) {
-    typeSel.add(new Option(value, value));
+    typeSel.add(new Option(formatLabel(value), value));
   }
 
   type StoredSettings = {
@@ -151,7 +163,13 @@ export async function init(): Promise<void> {
   };
 
   const updateMusicToggle = () => {
-    musicToggle.textContent = musicEnabled ? 'Disable Music' : 'Enable Music';
+    if (musicEnabled && musicSource) {
+      musicToggle.textContent = '🔊';
+      musicToggle.classList.remove('muted');
+    } else {
+      musicToggle.textContent = '🔇';
+      musicToggle.classList.add('muted');
+    }
   };
 
   const LS_KEY = 'snake-maths:settings';
