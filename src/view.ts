@@ -222,11 +222,17 @@ export async function init(): Promise<void> {
     ctx.imageSmoothingEnabled = false;
   };
 
-  const drawSprite = (image: HTMLImageElement, centerX: number, centerY: number, rotation: number) => {
+  const drawSprite = (
+    image: HTMLImageElement,
+    centerX: number,
+    centerY: number,
+    rotation: number,
+    options?: { flipX?: boolean }
+  ) => {
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.rotate(rotation);
-    ctx.scale(spriteScale, spriteScale);
+    ctx.scale(options?.flipX ? -spriteScale : spriteScale, spriteScale);
     ctx.drawImage(image, -image.width / 2, -image.height / 2);
     ctx.restore();
   };
@@ -335,21 +341,30 @@ export async function init(): Promise<void> {
         continue;
       }
 
-      const angle = (() => {
-        const computed = Math.atan2(inVec.y, inVec.x) + Math.PI / 2;
-        const normalized = ((computed % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-        return normalized;
+      // existing CW corner logic (unchanged)
+      const angleCW = (() => {
+        const a = Math.atan2(inVec.y, inVec.x) + Math.PI / 2;
+        return ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
       })();
+      const outCW = { x: Math.round(Math.cos(angleCW)), y: Math.round(Math.sin(angleCW)) };
 
-      const rotatedOut = {
-        x: Math.round(Math.cos(angle)),
-        y: Math.round(Math.sin(angle)),
-      };
-
-      if (rotatedOut.x === outVec.x && rotatedOut.y === outVec.y) {
-        drawSprite(cornerSprite, center.x, center.y, angle);
+      if (outCW.x === outVec.x && outCW.y === outVec.y) {
+        // CW corner: draw as before
+        drawSprite(cornerSprite, center.x, center.y, angleCW);
       } else {
-        fallbackDraw(segment);
+        // CCW detection only
+        const angleCCWTest = (() => {
+          const a = Math.atan2(inVec.y, inVec.x) - Math.PI / 2;
+          return ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        })();
+        const outCCW = { x: Math.round(Math.cos(angleCCWTest)), y: Math.round(Math.sin(angleCCWTest)) };
+
+        if (outCCW.x === outVec.x && outCCW.y === outVec.y) {
+          // CCW corner: same rotation as CW, but mirrored
+          drawSprite(cornerSprite, center.x, center.y, angleCW, { flipX: true });
+        } else {
+          fallbackDraw(segment);
+        }
       }
     }
 
