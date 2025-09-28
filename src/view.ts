@@ -12,6 +12,7 @@ import {
 } from './constants';
 import { YEAR_LEVELS, PROBLEM_TYPES } from './math';
 import { initState, reduce } from './core';
+import { ensureRunning, loadAudioBuffer, playBuffer, createLoopSource } from './audio';
 import type { Dir, GameEvent, State } from './types';
 
 const SPRITE_BASE_SIZE = 48;
@@ -48,11 +49,13 @@ export async function init(): Promise<void> {
     throw new Error('Cannot initialise game: 2D context unavailable');
   }
 
-  const [headSprite, bodySprite, cornerSprite, foodSprite] = await Promise.all([
+  const [headSprite, bodySprite, cornerSprite, foodSprite, chompBuffer, loopBuffer] = await Promise.all([
     loadSprite('/sprites/snake_head.png'),
     loadSprite('/sprites/snake_body.png'),
     loadSprite('/sprites/snake_corner.png'),
     loadSprite('/sprites/food.png'),
+    loadAudioBuffer('/sfx/chomp.mp3'),
+    loadAudioBuffer('/music/loop.mp3'),
   ]);
 
   const logicalWidth = CANVAS_WIDTH;
@@ -80,8 +83,9 @@ export async function init(): Promise<void> {
   const yearSel = document.getElementById('year') as HTMLSelectElement | null;
   const typeSel = document.getElementById('ptype') as HTMLSelectElement | null;
   const speedSel = document.getElementById('speed') as HTMLSelectElement | null;
+  const musicToggle = document.getElementById('music-toggle') as HTMLButtonElement | null;
 
-  if (!yearSel || !typeSel || !speedSel) {
+  if (!yearSel || !typeSel || !speedSel || !musicToggle) {
     throw new Error('Cannot initialise game: controls not found');
   }
 
@@ -112,6 +116,29 @@ export async function init(): Promise<void> {
   speedSel.replaceChildren(
     ...SPEED_PRESETS.map(({ label, value }) => new Option(label, String(value))),
   );
+
+  let musicEnabled = false;
+  let musicSource: AudioBufferSourceNode | null = null;
+
+  const stopMusic = () => {
+    if (musicSource) {
+      musicSource.stop();
+      musicSource.disconnect();
+      musicSource = null;
+    }
+  };
+
+  const startMusic = async () => {
+    await ensureRunning();
+    stopMusic();
+    const source = createLoopSource(loopBuffer, { gain: 0.8 });
+    source.start();
+    musicSource = source;
+  };
+
+  const updateMusicToggle = () => {
+    musicToggle.textContent = musicEnabled ? 'Disable Music' : 'Enable Music';
+  };
 
   const LS_KEY = 'snake-maths:settings';
   const loadSettings = (): StoredSettings => {
@@ -421,8 +448,15 @@ export async function init(): Promise<void> {
   };
 
   const dispatch = (event: GameEvent) => {
+    const previousPauseReason = state.pauseReason;
     state = reduce(state, event);
     updateTiming();
+
+    if (previousPauseReason !== 'correct' && state.pauseReason === 'correct') {
+      ensureRunning()
+        .then(() => playBuffer(chompBuffer, { gain: 0.9 }))
+        .catch((error) => console.warn('snake-maths:audio:chomp failed', error));
+    }
   };
 
   const applyConfig = () => {
@@ -445,6 +479,31 @@ export async function init(): Promise<void> {
   yearSel.addEventListener('change', applyConfig, { signal });
   typeSel.addEventListener('change', applyConfig, { signal });
   speedSel.addEventListener('change', applySpeed, { signal });
+
+  updateMusicToggle();
+
+  musicToggle.addEventListener(
+    'click',
+    () => {
+      if (musicEnabled) {
+        stopMusic();
+        musicEnabled = false;
+        updateMusicToggle();
+        return;
+      }
+
+      ensureRunning()
+        .then(() => startMusic())
+        .then(() => {
+          musicEnabled = true;
+          updateMusicToggle();
+        })
+        .catch((error) => {
+          console.warn('snake-maths:audio:music failed', error);
+        });
+    },
+    { signal },
+  );
 
   let accumulator = 0;
   let lastFrameTs = performance.now();
@@ -503,6 +562,10 @@ export async function init(): Promise<void> {
   };
 
   signal.addEventListener('abort', stopLoop, { once: true });
+  signal.addEventListener('abort', () => {
+    stopMusic();
+    musicEnabled = false;
+  });
 
   const KEY_TO_DIR: Record<string, Dir> = {
     ArrowUp: 'up',
