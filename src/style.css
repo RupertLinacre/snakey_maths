@@ -9,7 +9,7 @@ body {
 
 body {
   margin: 0;
-  background: url('/images/background.png');
+  background-color: #05030f;
   background-size: 256px 256px;
   background-repeat: repeat;
   color: #f4f4ff;

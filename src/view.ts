@@ -17,6 +17,17 @@ import { ensureRunning, loadAudioBuffer, playBuffer, createLoopSource } from './
 import type { Dir, GameEvent, State } from './types';
 
 const SPRITE_BASE_SIZE = 48;
+const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
+
+function formatNumberForDisplay(value: number | string, precision = 10): string {
+  if (typeof value !== 'number') {
+    return String(value);
+  }
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  return parseFloat(value.toFixed(precision)).toString();
+}
 
 function loadSprite(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -38,6 +49,8 @@ export async function init(): Promise<void> {
     throw new Error('Cannot initialise game: #app root not found');
   }
 
+  document.body.style.backgroundImage = `url(${asset('images/background.png')})`;
+
   const canvas = root.querySelector<HTMLCanvasElement>('#game');
 
   if (!canvas) {
@@ -51,12 +64,12 @@ export async function init(): Promise<void> {
   }
 
   const [headSprite, bodySprite, cornerSprite, foodSprite, chompBuffer, loopBuffer] = await Promise.all([
-    loadSprite('/sprites/snake_head.png'),
-    loadSprite('/sprites/snake_body.png'),
-    loadSprite('/sprites/snake_corner.png'),
-    loadSprite('/sprites/food.png'),
-    loadAudioBuffer('/sfx/chomp.mp3'),
-    loadAudioBuffer('/music/loop.mp3'),
+    loadSprite(asset('sprites/snake_head.png')),
+    loadSprite(asset('sprites/snake_body.png')),
+    loadSprite(asset('sprites/snake_corner.png')),
+    loadSprite(asset('sprites/food.png')),
+    loadAudioBuffer(asset('sfx/chomp.mp3')),
+    loadAudioBuffer(asset('music/loop.mp3')),
   ]);
 
   const logicalWidth = CANVAS_WIDTH;
@@ -360,7 +373,7 @@ export async function init(): Promise<void> {
 
       ctx.fillStyle = '#ffffff';
       ctx.textBaseline = 'top';
-      ctx.fillText(fruit.label, centerX, centerY + CELL / 2 - 2);
+      ctx.fillText(formatNumberForDisplay(fruit.value), centerX, centerY + CELL / 2 - 2);
       ctx.textBaseline = 'middle';
     }
   };
