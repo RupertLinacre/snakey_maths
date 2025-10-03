@@ -260,12 +260,16 @@ export async function init(): Promise<void> {
   };
 
   const ellipsis = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string => {
-    if (context.measureText(text).width <= maxWidth) {
+    const transform = context.getTransform();
+    const scaleX = transform.a || 1;
+    const measure = (value: string) => context.measureText(value).width / scaleX;
+
+    if (measure(text) <= maxWidth) {
       return text;
     }
 
     let trimmed = text;
-    while (trimmed.length > 0 && context.measureText(`${trimmed}…`).width > maxWidth) {
+    while (trimmed.length > 0 && measure(`${trimmed}…`) > maxWidth) {
       trimmed = trimmed.slice(0, -1);
     }
 
@@ -282,14 +286,27 @@ export async function init(): Promise<void> {
 
     const expr = state.problem?.expressionShort ?? state.problem?.expression ?? 'Loading…';
     const label = `Problem: ${expr}`;
-    const maxLabelWidth = logicalWidth - 200;
+    const score = Math.max(0, state.snake.length - 1);
+    const scoreText = `Score: ${score}`;
+    const livesText = `Lives: ${state.lives}`;
+    const hudGap = 24;
+    const rightPadding = 16;
+    const scaleX = ctx.getTransform().a || 1;
+    const measureLogical = (value: string) => ctx.measureText(value).width / scaleX;
+    const livesWidth = measureLogical(livesText);
+    const scoreWidth = measureLogical(scoreText);
+    const reservedRightWidth = livesWidth + scoreWidth + hudGap + rightPadding;
+    const maxLabelWidth = Math.max(0, logicalWidth - reservedRightWidth - 16);
     const displayed = ellipsis(ctx, label, maxLabelWidth);
 
     ctx.textAlign = 'left';
     ctx.fillText(displayed, 16, hudHeight / 2);
 
     ctx.textAlign = 'right';
-    ctx.fillText(`Lives: ${state.lives}`, logicalWidth - 16, hudHeight / 2);
+    const livesX = logicalWidth - rightPadding;
+    ctx.fillText(livesText, livesX, hudHeight / 2);
+    const scoreX = livesX - livesWidth - hudGap;
+    ctx.fillText(scoreText, scoreX, hudHeight / 2);
   };
 
   const drawSnake = () => {
